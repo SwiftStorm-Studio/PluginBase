@@ -24,7 +24,6 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.20")
     implementation("org.json:json:20240303")
     implementation("org.reflections:reflections:0.10.2")
-    implementation("net.rk4z:beacon:1.4.8")
 }
 
 val localProperties = Properties().apply {

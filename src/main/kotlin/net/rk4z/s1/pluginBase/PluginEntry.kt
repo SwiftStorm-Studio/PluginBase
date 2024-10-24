@@ -1,7 +1,5 @@
 package net.rk4z.s1.pluginBase
 
-import net.rk4z.beacon.EventBus
-import net.rk4z.s1.pluginBase.events.*
 import org.bukkit.NamespacedKey
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.annotations.NotNull
@@ -13,6 +11,8 @@ import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.math.BigDecimal
+import java.math.BigInteger
 import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
@@ -125,17 +125,12 @@ abstract class PluginEntry(
 
     @Deprecated("Do not override this method. Use event system instead.")
     override fun onLoad() {
-        if (packageName.isNotBlank()) {
-            EventBus.initialize(packageName, "net.rk4z.s1.pluginBase.events")
-        } else {
-            EventBus.initialize("net.rk4z.s1.pluginBase.events")
-        }
         instance = getPlugin(this::class.java)
         key = NamespacedKey(this, id)
         executor = Executor(get())
         Companion.logger = LoggerFactory.getLogger(this::class.java.simpleName)
 
-        EventBus.postFullSync(PluginLoadEvent.Pre.get())
+        onLoadPre()
 
         initializeDirectories()
         if (!isDebug) {
@@ -146,12 +141,12 @@ abstract class PluginEntry(
             checkUpdate()
         }
 
-        EventBus.postFullSync(PluginLoadEvent.Post.get())
+        onLoadPost()
     }
 
     @Deprecated("Do not override this method. Use event system instead.")
     override fun onEnable() {
-        EventBus.postFullSync(PluginEnableEvent.Pre.get())
+        onEnablePre()
 
         if (enableMetrics) {
             if (serviceId != null) {
@@ -161,16 +156,24 @@ abstract class PluginEntry(
             }
         }
 
-        EventBus.postFullSync(PluginEnableEvent.Post.get())
+        onEnablePost()
     }
 
     @Deprecated("Do not override this method. Use event system instead.")
     override fun onDisable() {
-        EventBus.postFullSync(PluginDisableEvent.Pre.get())
+        onDisablePre()
 
         executor.shutdown()
 
-        EventBus.postFullSync(PluginDisableEvent.Post.get())
+        onDisablePost()
+    }
+
+    fun String.toBooleanOrNull(): Boolean? {
+        return when (this.trim().lowercase()) {
+            "true", "1", "t" -> true
+            "false", "0", "f" -> false
+            else -> null
+        }
     }
 
     inline fun <reified T> lc(key: String): T? {
@@ -183,8 +186,21 @@ abstract class PluginEntry(
         return when (T::class) {
             String::class -> value as? T
             Int::class -> value?.toString()?.toIntOrNull() as? T
-            Boolean::class -> value?.toString()?.toBoolean() as? T
+            Boolean::class -> value?.toString()?.toBooleanOrNull() as? T
             Double::class -> value?.toString()?.toDoubleOrNull() as? T
+            Short::class -> value?.toString()?.toShortOrNull() as? T
+            Long::class -> value?.toString()?.toLongOrNull() as? T
+            Float::class -> value?.toString()?.toFloatOrNull() as? T
+
+            // ** More specialized types are here :) **
+
+            Byte::class -> value?.toString()?.toByteOrNull() as? T
+            Char::class -> (value as? String)?.singleOrNull() as? T
+            List::class -> value as? List<*> as? T
+            Array::class -> (value as? List<*>)?.toTypedArray() as? T
+            Map::class -> value as? Map<*, *> as? T
+            BigInteger::class -> (value?.toString())?.let { BigInteger(it) } as? T
+            BigDecimal::class -> (value?.toString())?.let { BigDecimal(it) } as? T
             else -> value as? T
         }
     }
@@ -336,6 +352,12 @@ abstract class PluginEntry(
     }
 
     // You can override these methods to handle the update check results
+    open fun onLoadPre() {}
+    open fun onLoadPost() {}
+    open fun onEnablePre() {}
+    open fun onEnablePost() {}
+    open fun onDisablePre() {}
+    open fun onDisablePost() {}
     open fun onAllVersionsRetrieved(versionCount: Int) {}
     open fun onNewVersionFound(latestVersion: String, newerVersionCount: Int) {}
     open fun onNoNewVersionFound() {}
