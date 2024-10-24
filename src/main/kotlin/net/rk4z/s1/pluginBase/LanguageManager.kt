@@ -136,9 +136,38 @@ object LanguageManager {
         val lang = player.getLanguage()
         val message = messages[lang]?.get(key)
 
-        val st = message?.let { String.format(it, *args) } ?: return key.c()
+        val t = message?.let { String.format(it, *args) } ?: return key.c()
 
-        return Component.text(st)
+        return Component.text(t)
+    }
+
+    /**
+     * Retrieves the localized message for the given player, or returns a default message if not found.
+     *
+     * @param player The player whose language settings will be used to retrieve the message.
+     * @param key The message key used to look up the message.
+     * @param defaultMessage A fallback message to use if the localized message is not found.
+     * @param args Optional arguments to format the message.
+     * @return A [TextComponent] containing the localized message or the default message.
+     */
+    fun getMessageOrDefault(player: Player, key: MessageKey, defaultMessage: String, vararg args: Any): TextComponent {
+        val lang = player.getLanguage()
+        val message = messages[lang]?.get(key)
+
+        val t = message?.let { String.format(it, *args) } ?: defaultMessage
+
+        return Component.text(t)
+    }
+
+    /**
+     * Retrieves the raw message for the given player and message key without formatting or placeholders.
+     *
+     * @param player The player whose language settings will be used to retrieve the raw message.
+     * @param key The message key used to look up the message.
+     * @return The raw message string if found, or the key name if not found.
+     */
+    fun getRawMessage(player: Player, key: MessageKey): String {
+        return messages[player.getLanguage()]?.get(key) ?: key.c().content()
     }
 
     /**
@@ -153,9 +182,21 @@ object LanguageManager {
         val lang = Locale.getDefault().language
         val message = messages[lang]?.get(key)
 
-        val st = message?.let { String.format(it, *args) } ?: return key.c().content()
+        val t = message?.let { String.format(it, *args) } ?: return key.c().content()
 
-        return st
+        return t
+    }
+
+    /**
+     * Checks if a localized message exists for the given message key and player's language.
+     *
+     * @param player The player whose language settings will be used to check for the message.
+     * @param key The message key to check.
+     * @return `true` if a message exists for the player's language, otherwise `false`.
+     */
+    fun hasMessage(player: Player, key: MessageKey): Boolean {
+        val lang = player.getLanguage()
+        return messages[lang]?.containsKey(key) ?: false
     }
 
 }
@@ -199,6 +240,31 @@ sealed interface MessageKey {
      */
     fun c(): TextComponent {
         return Component.text(this.javaClass.simpleName)
+    }
+
+    /**
+     * Retrieves the raw string representation of the message key, without any formatting.
+     * This can be useful when working with systems that do not support TextComponent.
+     *
+     * @return A [String] representing the raw message key or the key's simple name if no message is found.
+     */
+    fun rc(): String {
+        return this.javaClass.simpleName
+    }
+
+    /**
+     * Logs the message key as a message to the console.
+     *
+     * @param level The logging level (INFO, WARN, ERROR, etc.).
+     */
+    fun log(level: String = "INFO") {
+        val message = rc()
+        when (level.uppercase()) {
+            "INFO" -> logger.info(message)
+            "WARN" -> logger.warn(message)
+            "ERROR" -> logger.error(message)
+            else -> logger.debug(message)
+        }
     }
 
     /**

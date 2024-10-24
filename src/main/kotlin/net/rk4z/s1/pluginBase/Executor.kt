@@ -89,6 +89,21 @@ class Executor(private val plugin: JavaPlugin) {
     }
 
     /**
+     * Submits a Callable task for asynchronous execution after a specified delay.
+     *
+     * @param task The Callable task to be executed.
+     * @param delay The delay (in ticks) before the task is executed.
+     * @return A Future representing the pending result of the task.
+     * @throws RejectedExecutionException If the Executor has been shut down.
+     */
+    fun <T> submitWithDelay(task: Callable<T>, delay: Long): Future<T> {
+        checkShutdown()
+        val future = Bukkit.getScheduler().callSyncMethod(plugin, task)
+        Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, Runnable { runningTasks.add(future) }, delay)
+        return future
+    }
+
+    /**
      * Submits a collection of Callable tasks for asynchronous execution.
      * This method will block until all tasks have completed.
      *
@@ -102,6 +117,44 @@ class Executor(private val plugin: JavaPlugin) {
         checkShutdown()
         val futures = tasks.map { task -> submit(task) }
         return futures
+    }
+
+    /**
+     * Waits for all running tasks to complete or until the timeout occurs.
+     *
+     * @param timeout The maximum time to wait.
+     * @param timeUnit The time unit of the timeout argument.
+     * @return `true` if all tasks completed before the timeout, otherwise `false`.
+     * @throws InterruptedException If interrupted while waiting.
+     */
+    @Throws(InterruptedException::class)
+    fun awaitTermination(timeout: Long, timeUnit: TimeUnit): Boolean {
+        val endTime = System.nanoTime() + timeUnit.toNanos(timeout)
+        while (System.nanoTime() < endTime) {
+            if (runningTasks.all { it.isDone || it.isCancelled }) {
+                return true
+            }
+            Thread.sleep(100) // Polling delay
+        }
+        return false
+    }
+
+    /**
+     * Cancels all currently running or scheduled tasks.
+     *
+     * @param mayInterruptIfRunning If `true`, tasks that are currently running are interrupted.
+     */
+    fun cancelAll(mayInterruptIfRunning: Boolean) {
+        runningTasks.forEach { it.cancel(mayInterruptIfRunning) }
+    }
+
+    /**
+     * Checks if the Executor has been shut down.
+     *
+     * @return `true` if the Executor has been shut down, otherwise `false`.
+     */
+    fun isShutdown(): Boolean {
+        return isShutdown.get()
     }
 
     /**

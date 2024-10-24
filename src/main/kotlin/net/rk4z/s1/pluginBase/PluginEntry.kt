@@ -205,7 +205,7 @@ abstract class PluginEntry(
         }
     }
 
-    private fun initializeDirectories() {
+    protected fun initializeDirectories() {
         if (dataFolder.toPath().notExists()) {
             dataFolder.mkdirs()
         }
@@ -223,7 +223,7 @@ abstract class PluginEntry(
         }
     }
 
-    private fun updateLanguageFilesIfNeeded() {
+    protected fun updateLanguageFilesIfNeeded() {
         availableLang?.let {
             it.forEach { lang ->
                 val langFile = File(langDir, "$lang.yml")
@@ -256,7 +256,7 @@ abstract class PluginEntry(
         }
     }
 
-    private fun loadLanguageFiles() {
+    protected fun loadLanguageFiles() {
         availableLang?.let {
             it.forEach { lang ->
                 val langFile = langDir.resolve("$lang.yml")
@@ -274,14 +274,14 @@ abstract class PluginEntry(
         }
     }
 
-    private fun readLangVersion(stream: InputStream): String {
+    protected fun readLangVersion(stream: InputStream): String {
         return InputStreamReader(stream, StandardCharsets.UTF_8).use { reader ->
             val langData: Map<String, Any> = yaml.load(reader)
             langData["langVersion"]?.toString() ?: "0"
         }
     }
 
-    private fun checkUpdate() {
+    protected fun checkUpdate() {
         executor.execute {
             try {
                 val connection = createConnection()
@@ -304,14 +304,14 @@ abstract class PluginEntry(
         }
     }
 
-    private fun createConnection(): HttpURLConnection {
+    protected fun createConnection(): HttpURLConnection {
         val url = URI(MODRINTH_API_URL).toURL()
         val connection = url.openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         return connection
     }
 
-    private fun extractVersionInfo(response: String): Triple<String, Int, Int> {
+    protected fun extractVersionInfo(response: String): Triple<String, Int, Int> {
         val jsonArray = JSONArray(response)
         var latestVersion = ""
         var latestDate = ""
@@ -336,7 +336,7 @@ abstract class PluginEntry(
         return Triple(latestVersion, versionCount, newerVersionCount)
     }
 
-    private fun isVersionNewer(version1: String, version2: String): Boolean {
+    protected fun isVersionNewer(version1: String, version2: String): Boolean {
         val v1Parts = version1.split(".").map { it.toIntOrNull() ?: 0 }
         val v2Parts = version2.split(".").map { it.toIntOrNull() ?: 0 }
         val maxLength = maxOf(v1Parts.size, v2Parts.size)
