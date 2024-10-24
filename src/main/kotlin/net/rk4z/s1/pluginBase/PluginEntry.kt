@@ -24,14 +24,19 @@ import kotlin.io.path.notExists
 abstract class PluginEntry(
     @NotNull
     val id: String,
+    /**
+     * This package name is used for event bus initialization and translation key detection.
+     *
+     * You should set the package name of the main class of your plugin.
+     */
     @NotNull
     val packageName: String,
     val isDebug: Boolean = false,
-    private val enableMetrics: Boolean = false,
-    private val serviceId: Int? = null,
-    private val enableUpdateChecker: Boolean = true,
-    private val modrinthID: String? = null,
-    private val availableLang: List<String>? = null
+    var enableMetrics: Boolean = false,
+    val serviceId: Int? = null,
+    var enableUpdateChecker: Boolean = true,
+    val modrinthID: String? = null,
+    val availableLang: List<String>? = null
 ) : JavaPlugin() {
     companion object {
         /**
@@ -114,10 +119,11 @@ abstract class PluginEntry(
     @Suppress("PropertyName")
     val MODRINTH_DOWNLOAD_URL = "https://modrinth.com/plugin/${modrinthID}/versions/"
 
-    private val configFile = dataFolder.resolve("config.yml")
+    val yaml = Yaml()
+    val configFile = dataFolder.resolve("config.yml")
     private val langDir = dataFolder.resolve("lang")
-    private val yaml = Yaml()
 
+    @Deprecated("Do not override this method. Use event system instead.")
     override fun onLoad() {
         if (packageName.isNotBlank()) {
             EventBus.initialize(packageName, "net.rk4z.s1.pluginBase.events")
@@ -143,6 +149,7 @@ abstract class PluginEntry(
         EventBus.postFullSync(PluginLoadEvent.Post.get())
     }
 
+    @Deprecated("Do not override this method. Use event system instead.")
     override fun onEnable() {
         EventBus.postFullSync(PluginEnableEvent.Pre.get())
 
@@ -157,6 +164,7 @@ abstract class PluginEntry(
         EventBus.postFullSync(PluginEnableEvent.Post.get())
     }
 
+    @Deprecated("Do not override this method. Use event system instead.")
     override fun onDisable() {
         EventBus.postFullSync(PluginDisableEvent.Pre.get())
 
@@ -165,12 +173,20 @@ abstract class PluginEntry(
         EventBus.postFullSync(PluginDisableEvent.Post.get())
     }
 
-    fun lc(key: String): String {
+    inline fun <reified T> lc(key: String): T? {
         val config: Map<String, Any> = Files.newInputStream(configFile.toPath()).use { inputStream ->
             yaml.load(inputStream)
         }
 
-        return config[key]?.toString() ?: ""
+        val value = config[key]
+
+        return when (T::class) {
+            String::class -> value as? T
+            Int::class -> value?.toString()?.toIntOrNull() as? T
+            Boolean::class -> value?.toString()?.toBoolean() as? T
+            Double::class -> value?.toString()?.toDoubleOrNull() as? T
+            else -> value as? T
+        }
     }
 
     private fun initializeDirectories() {

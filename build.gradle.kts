@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "net.rk4z.s1"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -24,7 +24,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.20")
     implementation("org.json:json:20240303")
     implementation("org.reflections:reflections:0.10.2")
-    implementation("net.rk4z:beacon:1.4.6")
+    implementation("net.rk4z:beacon:1.4.8")
 }
 
 val localProperties = Properties().apply {
