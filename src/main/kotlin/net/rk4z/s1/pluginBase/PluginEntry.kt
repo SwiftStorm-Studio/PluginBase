@@ -45,6 +45,7 @@ abstract class PluginEntry(
          *
          * @property metrics The instance of [Metrics] used for tracking plugin metrics.
          */
+        @JvmStatic
         lateinit var metrics: Metrics
             private set
 
@@ -54,6 +55,7 @@ abstract class PluginEntry(
          *
          * @property logger The instance of [Logger] used for logging messages.
          */
+        @JvmStatic
         lateinit var logger: Logger
             private set
 
@@ -63,6 +65,7 @@ abstract class PluginEntry(
          *
          * @property key The [NamespacedKey] used for storing data in the plugin's namespace.
          */
+        @JvmStatic
         lateinit var key: NamespacedKey
             private set
 
@@ -72,7 +75,18 @@ abstract class PluginEntry(
          *
          * @property executor The [Executor] used for running asynchronous tasks.
          */
+        @JvmStatic
         lateinit var executor: Executor
+            private set
+
+        /**
+         * The Java helper instance used for registering Java event listeners. This is initialized later and is
+         * accessible only within this class or its subclasses.
+         *
+         * @property jHelper The [PluginEntryJavaHelper] used for registering Java event listeners.
+         */
+        @JvmStatic
+        lateinit var jHelper: PluginEntryJavaHelper
             private set
 
         /**
@@ -97,6 +111,7 @@ abstract class PluginEntry(
          * @return The singleton instance of the plugin, cast to the specified type [I].
          */
         @Suppress("UNCHECKED_CAST")
+        @JvmStatic
         fun <I : PluginEntry> get(): I {
             return instance as? I ?: throw IllegalStateException("Plugin instance not initialized")
         }
@@ -126,6 +141,7 @@ abstract class PluginEntry(
     @Deprecated("Do not override this method. Use event system instead.")
     override fun onLoad() {
         instance = getPlugin(this::class.java)
+        jHelper = PluginEntryJavaHelper(this)
         key = NamespacedKey(this, id)
         executor = Executor(get())
         Companion.logger = LoggerFactory.getLogger(this::class.java.simpleName)
