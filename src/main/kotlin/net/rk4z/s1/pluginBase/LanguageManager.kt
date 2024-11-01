@@ -231,7 +231,7 @@ object LanguageManager {
  * converts class names to lowercase for key matching. If the keys in the YAML file are
  * not lowercase, they will not be recognized correctly.
  */
-sealed interface MessageKey {
+interface MessageKey {
     /**
      * Returns the default message or key name as a [TextComponent], using the simple name of the class.
      * This is used as a fallback when no localized message is found.

@@ -25,7 +25,7 @@ abstract class PluginEntry(
     @NotNull
     val id: String,
     /**
-     * This package name is used for event bus initialization and translation key detection.
+     * This package name is used for event translation key detection.
      *
      * You should set the package name of the main class of your plugin.
      */

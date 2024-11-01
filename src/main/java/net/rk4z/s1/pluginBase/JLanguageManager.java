@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class JLanguageManager {
     private static final JLanguageManager INSTANCE = new JLanguageManager();
 
-    private final Map<String, Map<MessageKey, String>> messages = new ConcurrentHashMap<>();
+    private final Map<String, Map<JMessageKey, String>> messages = new ConcurrentHashMap<>();
 
     private JLanguageManager() {}
 
@@ -24,13 +24,13 @@ public class JLanguageManager {
     }
 
     public List<String> findMissingKeys(String lang) {
-        Map<String, MessageKey> messageKeyMap = new HashMap<>();
+        Map<String, JMessageKey> messageKeyMap = new HashMap<>();
         scanForMessageKeys(messageKeyMap);
 
-        Map<MessageKey, String> currentMessages = messages.getOrDefault(lang, new HashMap<>());
+        Map<JMessageKey, String> currentMessages = messages.getOrDefault(lang, new HashMap<>());
         List<String> missingKeys = new ArrayList<>();
 
-        for (Map.Entry<String, MessageKey> entry : messageKeyMap.entrySet()) {
+        for (Map.Entry<String, JMessageKey> entry : messageKeyMap.entrySet()) {
             if (!currentMessages.containsKey(entry.getValue())) {
                 missingKeys.add(entry.getKey());
                 PluginEntry.getLogger().warn("Missing key: {} for language: {}", entry.getKey(), lang);
@@ -40,25 +40,25 @@ public class JLanguageManager {
         return missingKeys;
     }
 
-    private void scanForMessageKeys(Map<String, MessageKey> messageKeyMap) {
+    private void scanForMessageKeys(Map<String, JMessageKey> messageKeyMap) {
         Reflections reflections = new Reflections(
                 new ConfigurationBuilder()
                         .setUrls(ClasspathHelper.forPackage(PluginEntry.get().getPackageName()))
                         .setScanners(Scanners.SubTypes)
         );
 
-        Set<Class<? extends MessageKey>> messageKeyClasses = reflections.getSubTypesOf(MessageKey.class);
-        for (Class<? extends MessageKey> clazz : messageKeyClasses) {
+        Set<Class<? extends JMessageKey>> messageKeyClasses = reflections.getSubTypesOf(JMessageKey.class);
+        for (Class<? extends JMessageKey> clazz : messageKeyClasses) {
             mapMessageKeys(clazz, "", messageKeyMap);
         }
     }
 
-    private void mapMessageKeys(@NotNull Class<? extends MessageKey> clazz, @NotNull String currentPath, Map<String, MessageKey> messageKeyMap) {
+    private void mapMessageKeys(@NotNull Class<? extends JMessageKey> clazz, @NotNull String currentPath, Map<String, JMessageKey> messageKeyMap) {
         String className = clazz.getSimpleName().toLowerCase();
         String fullPath = currentPath.isEmpty() ? className : currentPath + "." + className;
 
         try {
-            MessageKey instance = clazz.getDeclaredConstructor().newInstance();
+            JMessageKey instance = clazz.getDeclaredConstructor().newInstance();
             messageKeyMap.put(fullPath, instance);
 
             if (PluginEntry.get().isDebug()) {
@@ -79,7 +79,7 @@ public class JLanguageManager {
         return key.c();
     }
 
-    public TextComponent getMessageOrDefault(Player player, MessageKey key, String defaultMessage, Object... args) {
+    public TextComponent getMessageOrDefault(Player player, JMessageKey key, String defaultMessage, Object... args) {
         String lang = getPlayerLanguage(player);
         String message = messages.getOrDefault(lang, new HashMap<>()).get(key);
 
@@ -89,11 +89,11 @@ public class JLanguageManager {
         return Component.text(defaultMessage);
     }
 
-    public String getRawMessage(Player player, MessageKey key) {
+    public String getRawMessage(Player player, JMessageKey key) {
         return messages.getOrDefault(getPlayerLanguage(player), new HashMap<>()).getOrDefault(key, key.rc());
     }
 
-    public String getSysMessage(MessageKey key, Object... args) {
+    public String getSysMessage(JMessageKey key, Object... args) {
         String lang = Locale.getDefault().getLanguage();
         String message = messages.getOrDefault(lang, new HashMap<>()).get(key);
 
@@ -103,7 +103,7 @@ public class JLanguageManager {
         return key.rc();
     }
 
-    public boolean hasMessage(Player player, MessageKey key) {
+    public boolean hasMessage(Player player, JMessageKey key) {
         String lang = getPlayerLanguage(player);
         return messages.getOrDefault(lang, new HashMap<>()).containsKey(key);
     }
