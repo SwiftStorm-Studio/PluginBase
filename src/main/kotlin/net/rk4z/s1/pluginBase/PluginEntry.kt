@@ -73,10 +73,10 @@ abstract class PluginEntry(
          * The executor used for running asynchronous tasks. This is initialized later and is accessible only
          * within this class or its subclasses.
          *
-         * @property executor The [Executor] used for running asynchronous tasks.
+         * @property executor The [S1Executor] used for running asynchronous tasks.
          */
         @JvmStatic
-        lateinit var executor: Executor
+        lateinit var executor: S1Executor
             private set
 
         /**
@@ -143,7 +143,7 @@ abstract class PluginEntry(
         instance = getPlugin(this::class.java)
         jHelper = PluginEntryJavaHelper(this)
         key = NamespacedKey(this, id)
-        executor = Executor(get())
+        executor = S1Executor(get())
         Companion.logger = LoggerFactory.getLogger(this::class.java.simpleName)
 
         onLoadPre()
@@ -154,6 +154,7 @@ abstract class PluginEntry(
         }
         loadLanguageFiles()
         if (enableUpdateChecker) {
+            onCheckUpdate()
             checkUpdate()
         }
 
@@ -298,25 +299,23 @@ abstract class PluginEntry(
     }
 
     protected fun checkUpdate() {
-        executor.execute {
-            try {
-                val connection = createConnection()
-                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = connection.inputStream.bufferedReader().readText()
-                    val (latestVersion, versionCount, newerVersionCount) = extractVersionInfo(response)
+        try {
+            val connection = createConnection()
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val response = executor.submit { connection.inputStream.bufferedReader().readText() }.get()
+                val (latestVersion, versionCount, newerVersionCount) = extractVersionInfo(response)
 
-                    onAllVersionsRetrieved(versionCount)
-                    if (isVersionNewer(latestVersion, description.version)) {
-                        onNewVersionFound(latestVersion, newerVersionCount)
-                    } else {
-                        onNoNewVersionFound()
-                    }
+                onAllVersionsRetrieved(versionCount)
+                if (isVersionNewer(latestVersion, description.version)) {
+                    onNewVersionFound(latestVersion, newerVersionCount)
                 } else {
-                    onUpdateCheckFailed(connection.responseCode)
+                    onNoNewVersionFound()
                 }
-            } catch (e: Exception) {
-                onUpdateCheckError(e)
+            } else {
+                onUpdateCheckFailed(connection.responseCode)
             }
+        } catch (e: Exception) {
+            onUpdateCheckError(e)
         }
     }
 
@@ -374,6 +373,8 @@ abstract class PluginEntry(
     open fun onEnablePost() {}
     open fun onDisablePre() {}
     open fun onDisablePost() {}
+
+    open fun onCheckUpdate() {}
     open fun onAllVersionsRetrieved(versionCount: Int) {}
     open fun onNewVersionFound(latestVersion: String, newerVersionCount: Int) {}
     open fun onNoNewVersionFound() {}

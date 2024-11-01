@@ -5,7 +5,7 @@ import org.bukkit.plugin.java.JavaPlugin
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 
-class Executor(private val plugin: JavaPlugin) {
+class S1Executor internal constructor(private val plugin: JavaPlugin) {
     private val isShutdown = AtomicBoolean(false)
     private val runningTasks = mutableListOf<Future<*>>()
 
@@ -24,12 +24,52 @@ class Executor(private val plugin: JavaPlugin) {
     }
 
     /**
-     * Submits a Runnable task for asynchronous execution.
+     * Submits a Callable task for asynchronous execution and returns a Future representing the result.
      *
-     * @param task The Runnable task to be executed.
+     * @param task The Callable task to be executed.
+     * @return A Future representing the pending result of the task.
+     * @throws RejectedExecutionException If the Executor has been shut down.
+     */
+    fun <T> submitAsync(task: Callable<T>): Future<T> {
+        checkShutdown()
+        val future = CompletableFuture.supplyAsync {
+            try {
+                task.call()
+            } catch (e: Exception) {
+                throw RuntimeException("Task execution failed", e)
+            }
+        }
+        runningTasks.add(future)
+        return future
+    }
+
+    /**
+     * Submits a Runnable task for synchronous execution on the main server thread.
+     *
+     * This method will execute the provided task immediately on the main server thread,
+     * blocking until it is completed. Use this method for tasks that need to interact
+     * directly with the Minecraft server API or modify the server state.
+     *
+     * @param task The Runnable task to be executed on the main thread.
      * @throws RejectedExecutionException If the Executor has been shut down.
      */
     fun execute(task: Runnable) {
+        checkShutdown()
+        Bukkit.getScheduler().runTask(plugin, task)
+        runningTasks.add(CompletableFuture.runAsync(task))
+    }
+
+    /**
+     * Submits a Runnable task for asynchronous execution on a separate thread.
+     *
+     * This method will execute the provided task asynchronously, allowing it to run
+     * independently of the main server thread. Use this method for tasks that involve
+     * intensive computation, file I/O, or network requests to avoid blocking the main thread.
+     *
+     * @param task The Runnable task to be executed asynchronously.
+     * @throws RejectedExecutionException If the Executor has been shut down.
+     */
+    fun executeAsync(task: Runnable) {
         checkShutdown()
         Bukkit.getScheduler().runTaskAsynchronously(plugin, task)
         runningTasks.add(CompletableFuture.runAsync(task))
