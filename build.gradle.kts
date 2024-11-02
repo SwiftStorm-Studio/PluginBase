@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "net.rk4z.s1"
-version = "1.1.3"
+version = "1.1.5"
 
 repositories {
     mavenCentral()
@@ -20,7 +20,6 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
-    implementation("org.bstats:bstats-base:3.0.2")
     implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.20")
     implementation("org.json:json:20240303")
     implementation("org.reflections:reflections:0.10.2")
@@ -52,6 +51,15 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<JavaCompile> {
     options.release.set(21)
+}
+
+tasks.named<Jar>("jar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.exists() && !it.name.startsWith("kotlin") }
+            .map { if (it.isDirectory) it else zipTree(it) }
+    })
 }
 
 publishing {

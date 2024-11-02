@@ -36,18 +36,11 @@ abstract class PluginEntry(
     val serviceId: Int? = null,
     var enableUpdateChecker: Boolean = true,
     val modrinthID: String? = null,
-    val availableLang: List<String>? = null
+    val availableLang: List<String>? = null,
+    val autoLanguageUpdate: Boolean = true
 ) : JavaPlugin() {
     companion object {
-        /**
-         * Instance of the Metrics class for tracking plugin metrics.
-         * This is initialized later and is accessible only within this class or its subclasses.
-         *
-         * @property metrics The instance of [Metrics] used for tracking plugin metrics.
-         */
-        @JvmStatic
-        lateinit var metrics: Metrics
-            private set
+        private lateinit var metrics: Metrics
 
         /**
          * Instance of the logger for the plugin. This is initialized later and is accessible only within
@@ -241,34 +234,36 @@ abstract class PluginEntry(
     }
 
     protected fun updateLanguageFilesIfNeeded() {
-        availableLang?.let {
-            it.forEach { lang ->
-                val langFile = File(langDir, "$lang.yml")
-                val langResource = "lang/$lang.yml"
+        if (autoLanguageUpdate) {
+            availableLang?.let {
+                it.forEach { lang ->
+                    val langFile = File(langDir, "$lang.yml")
+                    val langResource = "lang/$lang.yml"
 
-                getResource(langResource)?.use { resourceStream ->
-                    val resourceBytes = resourceStream.readBytes()
+                    getResource(langResource)?.use { resourceStream ->
+                        val resourceBytes = resourceStream.readBytes()
 
-                    val jarLangVersion = readLangVersion(resourceBytes.inputStream())
-                    val installedLangVersion = if (langFile.exists()) {
-                        Files.newInputStream(langFile.toPath()).use { inputStream ->
-                            readLangVersion(inputStream)
+                        val jarLangVersion = readLangVersion(resourceBytes.inputStream())
+                        val installedLangVersion = if (langFile.exists()) {
+                            Files.newInputStream(langFile.toPath()).use { inputStream ->
+                                readLangVersion(inputStream)
+                            }
+                        } else {
+                            "0"
                         }
-                    } else {
-                        "0"
-                    }
 
-                    if (isVersionNewer(jarLangVersion, installedLangVersion)) {
-                        log.info("Replacing old $lang language file (version: $installedLangVersion) with newer version: $jarLangVersion")
-                        resourceBytes.inputStream().use { byteArrayStream ->
-                            Files.copy(
-                                byteArrayStream,
-                                langFile.toPath(),
-                                StandardCopyOption.REPLACE_EXISTING
-                            )
+                        if (isVersionNewer(jarLangVersion, installedLangVersion)) {
+                            log.info("Replacing old $lang language file (version: $installedLangVersion) with newer version: $jarLangVersion")
+                            resourceBytes.inputStream().use { byteArrayStream ->
+                                Files.copy(
+                                    byteArrayStream,
+                                    langFile.toPath(),
+                                    StandardCopyOption.REPLACE_EXISTING
+                                )
+                            }
                         }
-                    }
-                } ?: log.warn("Resource file '$langResource' not found in the Jar.")
+                    } ?: log.warn("Resource file '$langResource' not found in the Jar.")
+                }
             }
         }
     }
