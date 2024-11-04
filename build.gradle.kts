@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "net.rk4z.s1"
-version = "1.1.5"
+version = "1.1.7"
 
 repositories {
     mavenCentral()
@@ -60,6 +60,10 @@ tasks.named<Jar>("jar") {
             .filter { it.exists() && !it.name.startsWith("kotlin") }
             .map { if (it.isDirectory) it else zipTree(it) }
     })
+}
+
+tasks.named<Javadoc>("javadoc") {
+    isFailOnError = false
 }
 
 publishing {

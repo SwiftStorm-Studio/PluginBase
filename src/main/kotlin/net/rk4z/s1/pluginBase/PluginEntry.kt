@@ -1,5 +1,6 @@
 package net.rk4z.s1.pluginBase
 
+import net.rk4z.s1.pluginBase.bstats.Metrics
 import org.bukkit.NamespacedKey
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.annotations.NotNull
@@ -146,10 +147,6 @@ abstract class PluginEntry(
             updateLanguageFilesIfNeeded()
         }
         loadLanguageFiles()
-        if (enableUpdateChecker) {
-            onCheckUpdate()
-            checkUpdate()
-        }
 
         onLoadPost()
     }
@@ -164,6 +161,11 @@ abstract class PluginEntry(
             } else {
                 throw IllegalStateException("Service ID must be provided to enable metrics")
             }
+        }
+
+        if (enableUpdateChecker) {
+            onCheckUpdate()
+            checkUpdate()
         }
 
         onEnablePost()

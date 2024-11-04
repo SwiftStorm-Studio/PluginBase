@@ -76,6 +76,34 @@ class S1Executor internal constructor(private val plugin: JavaPlugin) {
     }
 
     /**
+     * Schedules a Runnable task for repeated execution at a fixed rate.
+     *
+     * @param task The Runnable task to be executed.
+     * @param delay The initial delay (in ticks) before the task is first executed.
+     * @param period The period (in ticks) between consecutive executions of the task.
+     * @throws RejectedExecutionException If the Executor has been shut down.
+     */
+    fun executeTimer(task: Runnable, delay: Long, period: Long) {
+        checkShutdown()
+        Bukkit.getScheduler().runTaskTimer(plugin, task, delay, period)
+        runningTasks.add(CompletableFuture.runAsync(task))
+    }
+
+    /**
+     * Schedules a Runnable task for repeated asynchronous execution at a fixed rate.
+     *
+     * @param task The Runnable task to be executed.
+     * @param delay The initial delay (in ticks) before the task is first executed.
+     * @param period The period (in ticks) between consecutive executions of the task.
+     * @throws RejectedExecutionException If the Executor has been shut down.
+     */
+    fun executeAsyncTimer(task: Runnable, delay: Long, period: Long) {
+        checkShutdown()
+        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, delay, period)
+        runningTasks.add(CompletableFuture.runAsync(task))
+    }
+
+    /**
      * Schedules a Runnable task for asynchronous execution after a specified delay.
      *
      * @param task The Runnable task to be executed.

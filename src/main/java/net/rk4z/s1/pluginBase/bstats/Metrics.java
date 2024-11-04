@@ -1,8 +1,7 @@
-package net.rk4z.s1.pluginBase;
+package net.rk4z.s1.pluginBase.bstats;
 
-import org.bstats.MetricsBase;
-import org.bstats.charts.CustomChart;
-import org.bstats.json.JsonObjectBuilder;
+import net.rk4z.s1.pluginBase.bstats.charts.CustomChart;
+import net.rk4z.s1.pluginBase.bstats.json.JsonObjectBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
