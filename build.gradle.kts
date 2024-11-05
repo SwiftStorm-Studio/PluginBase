@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "net.rk4z.s1"
-version = "1.1.7"
+version = "1.1.8"
 
 repositories {
     mavenCentral()

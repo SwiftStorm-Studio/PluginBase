@@ -38,7 +38,9 @@ abstract class PluginEntry(
     var enableUpdateChecker: Boolean = true,
     val modrinthID: String? = null,
     val availableLang: List<String>? = null,
-    val autoLanguageUpdate: Boolean = true
+    val autoLanguageUpdate: Boolean = true,
+    val useConfigFile: Boolean = true,
+    val useLanguageSystem: Boolean = true
 ) : JavaPlugin() {
     companion object {
         private lateinit var metrics: Metrics
@@ -144,9 +146,13 @@ abstract class PluginEntry(
 
         initializeDirectories()
         if (!isDebug) {
-            updateLanguageFilesIfNeeded()
+            if (autoLanguageUpdate) {
+                updateLanguageFilesIfNeeded()
+            }
         }
-        loadLanguageFiles()
+        if (useLanguageSystem) {
+            loadLanguageFiles()
+        }
 
         onLoadPost()
     }
@@ -221,51 +227,53 @@ abstract class PluginEntry(
         if (dataFolder.toPath().notExists()) {
             dataFolder.mkdirs()
         }
-        saveDefaultConfig()
-        if (!langDir.exists()) {
-            langDir.mkdirs()
+        if (useConfigFile) {
+            saveDefaultConfig()
         }
-        availableLang?.let {
-            it.forEach { s ->
-                val langFile = langDir.resolve("$s.yml")
-                if (langFile.toPath().notExists()) {
-                    saveResource("lang/$s.yml", false)
+        if (useLanguageSystem) {
+            if (!langDir.exists()) {
+                langDir.mkdirs()
+            }
+            availableLang?.let {
+                it.forEach { s ->
+                    val langFile = langDir.resolve("$s.yml")
+                    if (langFile.toPath().notExists()) {
+                        saveResource("lang/$s.yml", false)
+                    }
                 }
             }
         }
     }
 
     protected fun updateLanguageFilesIfNeeded() {
-        if (autoLanguageUpdate) {
-            availableLang?.let {
-                it.forEach { lang ->
-                    val langFile = File(langDir, "$lang.yml")
-                    val langResource = "lang/$lang.yml"
+        availableLang?.let {
+            it.forEach { lang ->
+                val langFile = File(langDir, "$lang.yml")
+                val langResource = "lang/$lang.yml"
 
-                    getResource(langResource)?.use { resourceStream ->
-                        val resourceBytes = resourceStream.readBytes()
+                getResource(langResource)?.use { resourceStream ->
+                    val resourceBytes = resourceStream.readBytes()
 
-                        val jarLangVersion = readLangVersion(resourceBytes.inputStream())
-                        val installedLangVersion = if (langFile.exists()) {
-                            Files.newInputStream(langFile.toPath()).use { inputStream ->
-                                readLangVersion(inputStream)
-                            }
-                        } else {
-                            "0"
+                    val jarLangVersion = readLangVersion(resourceBytes.inputStream())
+                    val installedLangVersion = if (langFile.exists()) {
+                        Files.newInputStream(langFile.toPath()).use { inputStream ->
+                            readLangVersion(inputStream)
                         }
+                    } else {
+                        "0"
+                    }
 
-                        if (isVersionNewer(jarLangVersion, installedLangVersion)) {
-                            log.info("Replacing old $lang language file (version: $installedLangVersion) with newer version: $jarLangVersion")
-                            resourceBytes.inputStream().use { byteArrayStream ->
-                                Files.copy(
-                                    byteArrayStream,
-                                    langFile.toPath(),
-                                    StandardCopyOption.REPLACE_EXISTING
-                                )
-                            }
+                    if (isVersionNewer(jarLangVersion, installedLangVersion)) {
+                        log.info("Replacing old $lang language file (version: $installedLangVersion) with newer version: $jarLangVersion")
+                        resourceBytes.inputStream().use { byteArrayStream ->
+                            Files.copy(
+                                byteArrayStream,
+                                langFile.toPath(),
+                                StandardCopyOption.REPLACE_EXISTING
+                            )
                         }
-                    } ?: log.warn("Resource file '$langResource' not found in the Jar.")
-                }
+                    }
+                } ?: log.warn("Resource file '$langResource' not found in the Jar.")
             }
         }
     }
