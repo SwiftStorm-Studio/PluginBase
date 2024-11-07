@@ -9,7 +9,7 @@ plugins {
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")
     mappings("net.fabricmc:yarn:1.21.3+build.2")
-    compileOnly(project(":integrations:core"))
+    compileOnly(project(":integrations:swiftbase-core"))
 }
 
 val localProperties = Properties().apply {

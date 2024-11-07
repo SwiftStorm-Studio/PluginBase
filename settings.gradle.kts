@@ -14,6 +14,12 @@ pluginManagement {
 rootProject.name = "swiftbase"
 
 include(":integrations")
+
 include(":integrations:core")
+project(":integrations:core").name = "swiftbase-core"
+
 include(":integrations:fabric")
+project(":integrations:fabric").name = "swiftbase-fabric"
+
 include(":integrations:paper")
+project(":integrations:paper").name = "swiftbase-paper"

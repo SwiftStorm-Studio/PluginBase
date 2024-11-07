@@ -19,6 +19,9 @@ subprojects {
     apply(plugin = "cl.franciscosolis.sonatype-central-upload")
     apply(plugin = "maven-publish")
 
+    group = rootProject.group
+    version = rootProject.version
+
     repositories {
         mavenCentral()
         maven("https://repo.papermc.io/repository/maven-public/")
@@ -54,15 +57,6 @@ subprojects {
 
     tasks.withType<JavaCompile> {
         options.release.set(21)
-    }
-
-    tasks.named<Jar>("jar") {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        from({
-            configurations.runtimeClasspath.get()
-                .filter { it.exists() && !it.name.startsWith("kotlin") }
-                .map { if (it.isDirectory) it else zipTree(it) }
-        })
     }
 
     tasks.named<Javadoc>("javadoc") {

@@ -4,7 +4,7 @@ import java.util.*
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")
-    compileOnly(project(":integrations:core"))
+    compileOnly(project(":integrations:swiftbase-core"))
 }
 
 val localProperties = Properties().apply {
@@ -49,7 +49,7 @@ publishing {
 }
 
 tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
-    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForMavenPublication")
+    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForPaperPublication")
 
     username = localProperties.getProperty("cu")
     password = localProperties.getProperty("cp")
@@ -61,7 +61,7 @@ tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
     )
 
     pom = file(
-        tasks.named("generatePomFileForMavenPublication").get().outputs.files.single()
+        tasks.named("generatePomFileForPaperPublication").get().outputs.files.single()
     )
 
     signingKey = localProperties.getProperty("signing.key")

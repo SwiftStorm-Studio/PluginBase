@@ -48,7 +48,7 @@ publishing {
 }
 
 tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
-    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForMavenPublication")
+    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForCorePublication")
 
     username = localProperties.getProperty("cu")
     password = localProperties.getProperty("cp")
@@ -60,7 +60,7 @@ tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
     )
 
     pom = file(
-        tasks.named("generatePomFileForMavenPublication").get().outputs.files.single()
+        tasks.named("generatePomFileForCorePublication").get().outputs.files.single()
     )
 
     signingKey = localProperties.getProperty("signing.key")
