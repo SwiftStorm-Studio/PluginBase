@@ -2,13 +2,12 @@ import cl.franciscosolis.sonatypecentralupload.SonatypeCentralUploadTask
 import java.io.FileInputStream
 import java.util.*
 
-val localProperties = Properties().apply {
-    load(FileInputStream(rootProject.file("local.properties")))
+dependencies {
+    implementation("net.kyori:adventure-api:4.17.0")
 }
 
-val coreJar by tasks.registering(Jar::class) {
-    archiveClassifier.set("core")
-    from(sourceSets.main.get().output)
+val localProperties = Properties().apply {
+    load(FileInputStream(rootProject.file("local.properties")))
 }
 
 publishing {

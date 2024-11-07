@@ -11,11 +11,6 @@ val localProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }
 
-val paperJar by tasks.registering(Jar::class) {
-    archiveClassifier.set("paper")
-    from(sourceSets.main.get().output)
-}
-
 publishing {
     publications {
         // Paper用のパッケージ
@@ -24,9 +19,7 @@ publishing {
             artifactId = "${rootProject.name}-paper"
             version = rootProject.version.toString()
 
-            artifact(tasks.named("paperJar")) {
-                classifier = "paper"
-            }
+            from(components["java"])
 
             pom {
                 name.set("SwiftBase Paper")
