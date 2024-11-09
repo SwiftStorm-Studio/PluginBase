@@ -5,9 +5,10 @@ pluginManagement {
         gradlePluginPortal()
     }
     plugins {
-        id("org.jetbrains.kotlin.jvm") version "2.0.20"
+        id("org.jetbrains.kotlin.jvm") version "2.0.21"
         id("fabric-loom") version "1.8-SNAPSHOT" apply false
         id("cl.franciscosolis.sonatype-central-upload") version "1.0.3" apply false
+        id("net.neoforged.moddev") version "1.0.21" apply false
         `maven-publish` apply false
     }
 }

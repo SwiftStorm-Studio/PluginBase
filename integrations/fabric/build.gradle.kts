@@ -9,6 +9,8 @@ plugins {
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")
     mappings("net.fabricmc:yarn:1.21.3+build.2")
+    modImplementation("net.fabricmc:fabric-loader:0.16.9")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:0.107.0+1.21.3")
     compileOnly(project(":integrations:swiftbase-core"))
 }
 
@@ -63,7 +65,7 @@ publishing {
 }
 
 tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
-    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForMavenPublication")
+    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForFabricPublication")
 
     username = localProperties.getProperty("cu")
     password = localProperties.getProperty("cp")
@@ -75,7 +77,7 @@ tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
     )
 
     pom = file(
-        tasks.named("generatePomFileForMavenPublication").get().outputs.files.single()
+        tasks.named("generatePomFileForFabricPublication").get().outputs.files.single()
     )
 
     signingKey = localProperties.getProperty("signing.key")

@@ -4,9 +4,25 @@ import net.rk4z.s1.swiftbase.core.Core.Companion.logger
 import org.jetbrains.annotations.NotNull
 import java.io.*
 
+/**
+ * Utility class for handling resources embedded within the plugin JAR. This class provides
+ * methods to save resources from the JAR to a specified data folder and retrieve resources
+ * as input streams.
+ *
+ * @property dataFolder The root directory where resources will be saved.
+ */
 class ResourceHelper internal constructor(
     private val dataFolder: File
 ) {
+
+    /**
+     * Saves a specified resource from the JAR to the `dataFolder`. Creates any necessary
+     * directories if they do not already exist.
+     *
+     * @param resourcePath The path of the resource within the JAR file.
+     * @param replace Specifies whether to replace the file if it already exists.
+     * @throws IllegalArgumentException If the resource path is empty or the resource is not found in the JAR.
+     */
     fun saveResource(@NotNull resourcePath: String, replace: Boolean) {
         if (resourcePath.isEmpty()) {
             throw IllegalArgumentException("ResourcePath cannot be null or empty")
@@ -40,6 +56,13 @@ class ResourceHelper internal constructor(
         }
     }
 
+    /**
+     * Retrieves an embedded resource from the JAR as an [InputStream].
+     *
+     * @param filename The name of the resource file within the JAR.
+     * @return An [InputStream] for the resource, or `null` if the resource is not found.
+     * @throws IllegalArgumentException If the filename is empty.
+     */
     fun getResource(filename: String): InputStream? {
         if (filename.isEmpty()) {
             throw IllegalArgumentException("Filename cannot be null or empty")

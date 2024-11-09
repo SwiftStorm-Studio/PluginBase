@@ -18,51 +18,68 @@ import java.nio.file.StandardCopyOption
 import java.util.*
 import kotlin.io.path.notExists
 
-@Suppress("MemberVisibilityCanBePrivate")
-class Core(
-    internal val packageName: String,
-    internal val dataFolder: File,
-    internal val useConfigFile: Boolean = true,
-    internal val useLanguageSystem: Boolean = true,
-    internal val isDebug: Boolean = false,
-    internal val availableLang: List<String>? = null,
-    internal val version: String,
-    modrinthID: String?
+@Suppress("unused", "MemberVisibilityCanBePrivate", "CanBeParameter", "PropertyName")
+class Core private constructor(
+    val packageName: String,
+    val dataFolder: File,
+    val version: String,
+    val modrinthID: String? = null,
+    val useConfigFile: Boolean = true,
+    val useLanguageSystem: Boolean = true,
+    val isDebug: Boolean = false,
+    val availableLang: List<String>? = null,
+    val executor: S0Executor
 ) {
     companion object {
-        @JvmStatic
-        lateinit var helper: ResourceHelper
-            private set
+        private lateinit var instance: Core
 
-        @JvmStatic
-        lateinit var logger: Logger
-            private set
+        internal val logger: Logger = LoggerFactory.getLogger("SwiftBase")
 
-        @JvmStatic
-        lateinit var executor: S0Executor
+        internal fun initialize(
+            packageName: String,
+            dataFolder: File,
+            version: String,
+            modrinthID: String? = null,
+            useConfigFile: Boolean = true,
+            useLanguageSystem: Boolean = true,
+            isDebug: Boolean = false,
+            availableLang: List<String>? = null,
+            executor: S0Executor
+        ): Core {
+            if (::instance.isInitialized) {
+                throw IllegalStateException("Core instance is already initialized.")
+            }
 
-        private var instance: Core? = null
+            instance = Core(
+                packageName,
+                dataFolder,
+                version,
+                modrinthID,
+                useConfigFile,
+                useLanguageSystem,
+                isDebug,
+                availableLang,
+                executor
+            )
+            return instance
+        }
 
-        @JvmStatic
-        fun get(): Core {
-            return instance ?: throw IllegalStateException("Core is not initialized.")
+        internal fun get(): Core {
+            if (!::instance.isInitialized) {
+                throw IllegalStateException("Core instance is not initialized.")
+            }
+
+            return instance
         }
     }
 
-    @Suppress("PropertyName")
     val MODRINTH_API_URL = "https://api.modrinth.com/v2/project/${modrinthID}/version"
-    @Suppress("PropertyName")
     val MODRINTH_DOWNLOAD_URL = "https://modrinth.com/plugin/${modrinthID}/versions/"
 
+    val helper = ResourceHelper(dataFolder)
     val yaml = Yaml()
     val configFile = dataFolder.resolve("config.yml")
-    private val langDir = dataFolder.resolve("lang")
-
-    init {
-        instance = this
-        helper = ResourceHelper(dataFolder)
-        logger = LoggerFactory.getLogger("SwiftBase-Core")
-    }
+    val langDir = dataFolder.resolve("lang")
 
     var onCheckUpdate: () -> Unit = {}
     var onAllVersionsRetrieved: (versionCount: Int) -> Unit = {}
@@ -80,12 +97,12 @@ class Core(
     }
 
     inline fun <reified T> lc(key: String): T? {
-        val config: Map<String, Any> = Files.newInputStream(configFile.toPath()).use { inputStream ->
-            yaml.load(inputStream)
-        }
-
+        val config: Map<String, Any> = Files.newInputStream(configFile.toPath()).use { yaml.load(it) }
         val value = config[key]
+        return parseValue(value)
+    }
 
+    inline fun <reified T> parseValue(value: Any?): T? {
         return when (T::class) {
             String::class -> value as? T
             Int::class -> value?.toString()?.toIntOrNull() as? T
@@ -94,9 +111,6 @@ class Core(
             Short::class -> value?.toString()?.toShortOrNull() as? T
             Long::class -> value?.toString()?.toLongOrNull() as? T
             Float::class -> value?.toString()?.toFloatOrNull() as? T
-
-            // ** More specialized types are here :) **
-
             Byte::class -> value?.toString()?.toByteOrNull() as? T
             Char::class -> (value as? String)?.singleOrNull() as? T
             List::class -> value as? List<*> as? T
@@ -109,45 +123,9 @@ class Core(
     }
 
     fun initializeDirectories() {
-        if (dataFolder.toPath().notExists()) {
-            dataFolder.mkdirs()
-        }
-        if (useConfigFile) {
-            val lang = Locale.getDefault().language
-            val configFileName = "$lang.yml"
-            var configInputStream: InputStream? = helper.getResource("config/$configFileName")
-
-            if (configInputStream == null) {
-                // We fall back to english if the language file is not found.
-                // So, if you want to use a config file, you must provide english config file.
-                configInputStream = helper.getResource("config/en.yml")
-            }
-
-            if (configInputStream != null) {
-                val targetConfigFile = File(dataFolder, "config.yml")
-
-                if (!targetConfigFile.exists()) {
-                    Files.copy(configInputStream, targetConfigFile.toPath())
-                }
-
-                configInputStream.close()
-            } else {
-                throw IllegalStateException("'UseConfigFile' setting is enabled but no config file (including default english config) is found.")
-            }
-        }
-        if (useLanguageSystem) {
-            if (!langDir.exists()) {
-                langDir.mkdirs()
-            }
-            availableLang?.let {
-                it.forEach { s ->
-                    val langFile = langDir.resolve("$s.yml")
-                    if (langFile.toPath().notExists()) {
-                        helper.saveResource("lang/$s.yml", false)
-                    }
-                }
-            }
-        }
+        if (dataFolder.toPath().notExists()) dataFolder.mkdirs()
+        if (useConfigFile) createConfigIfNotExists()
+        if (useLanguageSystem) initializeLanguageFiles()
     }
 
     fun updateLanguageFilesIfNeeded() {
@@ -183,38 +161,12 @@ class Core(
         }
     }
 
-    fun loadLanguageFiles() {
-        availableLang?.let {
-            it.forEach { lang ->
-                val langFile = langDir.resolve("$lang.yml")
-                if (Files.exists(langFile.toPath())) {
-                    Files.newBufferedReader(langFile.toPath(), StandardCharsets.UTF_8).use { reader ->
-                        val data: Map<String, Any> = yaml.load(reader)
-                        val messageMap: MutableMap<MessageKey, String> = mutableMapOf()
-                        LanguageManager.processYamlAndMapMessageKeys(data, messageMap)
-                        LanguageManager.messages[lang] = messageMap
-                    }
-                } else {
-                    log.warn("Language file for '$lang' not found.")
-                }
-            }
-        }
-    }
-
-    fun readLangVersion(stream: InputStream): String {
-        return InputStreamReader(stream, StandardCharsets.UTF_8).use { reader ->
-            val langData: Map<String, Any> = yaml.load(reader)
-            langData["langVersion"]?.toString() ?: "0"
-        }
-    }
-
     fun checkUpdate() {
         try {
             val connection = createConnection()
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 val response = executor.submit { connection.inputStream.bufferedReader().readText() }.get()
                 val (latestVersion, versionCount, newerVersionCount) = extractVersionInfo(response)
-
                 onAllVersionsRetrieved(versionCount)
                 if (isVersionNewer(latestVersion, version)) {
                     onNewVersionFound(latestVersion, newerVersionCount)
@@ -229,14 +181,36 @@ class Core(
         }
     }
 
-    fun createConnection(): HttpURLConnection {
-        val url = URI(MODRINTH_API_URL).toURL()
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        return connection
+    private fun createConfigIfNotExists() {
+        val defaultConfigLang = Locale.getDefault().language
+        val configFileName = "config/${defaultConfigLang}.yml"
+        helper.getResource(configFileName)?.use { inputStream ->
+            val targetConfigFile = File(dataFolder, "config.yml")
+            if (!targetConfigFile.exists()) Files.copy(inputStream, targetConfigFile.toPath())
+        }
     }
 
-    fun extractVersionInfo(response: String): Triple<String, Int, Int> {
+    private fun initializeLanguageFiles() {
+        if (!langDir.exists()) langDir.mkdirs()
+        availableLang?.forEach { lang ->
+            langDir.resolve("$lang.yml").apply {
+                if (this.toPath().notExists()) helper.saveResource("lang/$lang.yml", false)
+            }
+        }
+    }
+
+    private fun readLangVersion(stream: InputStream): String {
+        return InputStreamReader(stream, StandardCharsets.UTF_8).use { reader ->
+            val langData: Map<String, Any> = yaml.load(reader)
+            langData["langVersion"]?.toString() ?: "0"
+        }
+    }
+
+    private fun createConnection(): HttpURLConnection {
+        return URI(MODRINTH_API_URL).toURL().openConnection() as HttpURLConnection
+    }
+
+    private fun extractVersionInfo(response: String): Triple<String, Int, Int> {
         val jsonArray = JSONArray(response)
         var latestVersion = ""
         var latestDate = ""
@@ -248,20 +222,17 @@ class Core(
             val versionNumber = versionObject.getString("version_number")
             val releaseDate = versionObject.getString("date_published")
 
-            if (isVersionNewer(versionNumber, version)) {
-                newerVersionCount++
-            }
+            if (isVersionNewer(versionNumber, version)) newerVersionCount++
 
             if (releaseDate > latestDate) {
                 latestDate = releaseDate
                 latestVersion = versionNumber
             }
         }
-
         return Triple(latestVersion, versionCount, newerVersionCount)
     }
 
-    fun isVersionNewer(version1: String, version2: String): Boolean {
+    private fun isVersionNewer(version1: String, version2: String): Boolean {
         val v1Parts = version1.split(".").map { it.toIntOrNull() ?: 0 }
         val v2Parts = version2.split(".").map { it.toIntOrNull() ?: 0 }
         val maxLength = maxOf(v1Parts.size, v2Parts.size)

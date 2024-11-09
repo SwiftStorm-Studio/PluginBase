@@ -2,10 +2,6 @@ import cl.franciscosolis.sonatypecentralupload.SonatypeCentralUploadTask
 import java.io.FileInputStream
 import java.util.*
 
-dependencies {
-    implementation("net.kyori:adventure-api:4.17.0")
-}
-
 val localProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }

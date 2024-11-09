@@ -1,18 +1,23 @@
-package net.rk4z.s1.swiftbase.paper
+package net.rk4z.s1.swiftbase.fabric
 
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.TextComponent
-import net.rk4z.s1.swiftbase.bstats.Metrics
-import net.rk4z.s1.swiftbase.core.*
-import org.bukkit.NamespacedKey
-import org.bukkit.plugin.java.JavaPlugin
+import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
+import net.fabricmc.loader.api.FabricLoader
+import net.fabricmc.loader.api.metadata.ModMetadata
+import net.minecraft.client.MinecraftClient
+import net.minecraft.text.Text
+import net.rk4z.s1.swiftbase.core.Core
+import net.rk4z.s1.swiftbase.core.LanguageManager
+import net.rk4z.s1.swiftbase.core.MessageKey
+import net.rk4z.s1.swiftbase.core.SystemHelper
 import org.jetbrains.annotations.NotNull
 import org.reflections.Reflections.log
+import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
-@Suppress("UNCHECKED_CAST", "unused", "DEPRECATION", "MemberVisibilityCanBePrivate")
-open class PluginEntry(
+@Suppress("DuplicatedCode", "UNCHECKED_CAST", "unused", "MemberVisibilityCanBePrivate")
+open class ClientModEntry(
     @NotNull
     val id: String,
     /**
@@ -23,36 +28,33 @@ open class PluginEntry(
     @NotNull
     val packageName: String,
     val isDebug: Boolean = false,
-    var enableMetrics: Boolean = false,
-    val serviceId: Int? = null,
     var enableUpdateChecker: Boolean = true,
     val modrinthID: String? = null,
     val availableLang: List<String>? = null,
     val autoLanguageUpdate: Boolean = true,
     val useConfigFile: Boolean = true,
     val useLanguageSystem: Boolean = true
-) : JavaPlugin() {
+) : ClientModInitializer {
     companion object {
-        private lateinit var metrics: Metrics
-        private lateinit var instance: PluginEntry
+        private lateinit var instance: ClientModEntry
 
         @JvmStatic
         lateinit var core: Core
             private set
 
         @JvmStatic
-        lateinit var key: NamespacedKey
-            private set
-
-        @JvmStatic
         lateinit var languageManager: LanguageManager<*, *>
             private set
 
-        fun <I : PluginEntry> get() : I? {
+        fun <I : ClientModEntry> get() : I? {
             return instance as? I
         }
 
-        val paperTextComponentFactory = { text: String -> Component.text(text) }
+        internal fun get() : ClientModEntry? {
+            return get<ClientModEntry>()
+        }
+
+        val fabricTextComponentFactory = { text: String -> Text.of(text) }
     }
 
     var onCheckUpdate: () -> Unit = {}
@@ -62,22 +64,49 @@ open class PluginEntry(
     var onUpdateCheckFailed: (responseCode: Int) -> Unit = {}
     var onUpdateCheckError: (e: Exception) -> Unit = {}
 
-    @Deprecated("Do not override this method. Use event system instead.")
-    override fun onLoad() {
+    val loader: FabricLoader = FabricLoader.getInstance()
+    var client: MinecraftClient = MinecraftClient.getInstance()
+    val dataFolder: File = loader.gameDir.resolve(id).toFile()
+    val meta: ModMetadata = loader.getModContainer(id).get().metadata
+    val version: String = meta.version.friendlyString
+
+    override fun onInitializeClient()  {
+        if (!ModEntry.isInitialized) {
+            initSystem()
+
+            if (enableUpdateChecker) {
+                onCheckUpdate()
+                core.checkUpdate()
+            }
+
+            ClientLifecycleEvents.CLIENT_STOPPING.register {
+                onClientStoppingPre()
+
+                stopSystem()
+
+                onClientStoppingPost()
+            }
+        } else {
+            instance = this
+            core = ModEntry.core
+            languageManager = ModEntry.languageManager
+        }
+    }
+
+    private fun initSystem() {
         core = SystemHelper.createCore(
             packageName,
-            this.dataFolder,
-            description.version,
+            dataFolder,
+            version,
             modrinthID,
             useConfigFile,
             useLanguageSystem,
             isDebug,
             availableLang,
-            S1Executor(this)
+            S2Executor()
         )
-        instance = getPlugin(this::class.java)
-        key = NamespacedKey(this, id)
-        languageManager = SystemHelper.createLanguageManager<PaperPlayerAdapter, TextComponent>(paperTextComponentFactory)
+        instance = this
+        languageManager = SystemHelper.createLanguageManager<FabricPlayerAdapter, Text>(fabricTextComponentFactory)
 
         this.onCheckUpdate = core.onCheckUpdate
         this.onAllVersionsRetrieved = core.onAllVersionsRetrieved
@@ -86,7 +115,7 @@ open class PluginEntry(
         this.onUpdateCheckFailed = core.onUpdateCheckFailed
         this.onUpdateCheckError = core.onUpdateCheckError
 
-        onLoadPre()
+        onInitializingSystemPre()
 
         core.initializeDirectories()
         if (!isDebug) {
@@ -98,36 +127,15 @@ open class PluginEntry(
             loadLanguageFiles()
         }
 
-        onLoadPost()
+        onInitializingSystemPost()
     }
 
-    @Deprecated("Do not override this method. Use event system instead.")
-    override fun onEnable() {
-        onEnablePre()
+    private fun stopSystem() {
+        onShuttingDownSystemPre()
 
-        if (enableMetrics) {
-            if (serviceId != null) {
-                metrics = Metrics(this, serviceId)
-            } else {
-                throw IllegalStateException("Service ID must be provided to enable metrics")
-            }
-        }
+       core.executor.shutdown()
 
-        if (enableUpdateChecker) {
-            core.onCheckUpdate()
-            core.checkUpdate()
-        }
-
-        onEnablePost()
-    }
-
-    @Deprecated("Do not override this method. Use event system instead.")
-    override fun onDisable() {
-        onDisablePre()
-
-        core.executor.shutdown()
-
-        onDisablePost()
+        onShuttingDownSystemPost()
     }
 
     // This is a wrapper for the core's lc method
@@ -154,11 +162,11 @@ open class PluginEntry(
         }
     }
 
-    // You can override these methods to handle the update check results
-    open fun onLoadPre() {}
-    open fun onLoadPost() {}
-    open fun onEnablePre() {}
-    open fun onEnablePost() {}
-    open fun onDisablePre() {}
-    open fun onDisablePost() {}
+    open fun onInitializingSystemPre() {}
+    open fun onInitializingSystemPost() {}
+    open fun onShuttingDownSystemPre() {}
+    open fun onShuttingDownSystemPost() {}
+
+    open fun onClientStoppingPre() {}
+    open fun onClientStoppingPost() {}
 }

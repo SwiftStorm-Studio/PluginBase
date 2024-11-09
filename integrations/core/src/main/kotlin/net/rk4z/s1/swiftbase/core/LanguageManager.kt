@@ -1,26 +1,71 @@
 package net.rk4z.s1.swiftbase.core
 
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.TextComponent
 import net.rk4z.s1.swiftbase.core.Core.Companion.logger
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners
 import org.reflections.util.ClasspathHelper
 import org.reflections.util.ConfigurationBuilder
+import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
-@Suppress("UNCHECKED_CAST", "MemberVisibilityCanBePrivate", "unused")
-object LanguageManager {
-    val messages: MutableMap<String, MutableMap<MessageKey, String>> = mutableMapOf()
+/**
+ * Manages localization and message keys for the plugin, supporting multiple languages
+ * and dynamically loading message keys from YAML files. This class allows for efficient
+ * access to localized messages based on player preferences and system defaults.
+ *
+ * @param P The player type that implements [IPlayer].
+ * @param T The text component type used to display messages.
+ * @property textComponentFactory A factory function to create text components of type [T].
+ */
+@Suppress("UNCHECKED_CAST", "unused")
+class LanguageManager<P : IPlayer, T> private constructor(
+    internal val textComponentFactory: (String) -> T
+) {
+    companion object {
+        private lateinit var instance: LanguageManager<*, *>
 
+        /**
+         * Initializes the [LanguageManager] with the specified text component factory.
+         * This method must be called before accessing the [LanguageManager] instance.
+         *
+         * @param textComponentFactory A factory function for creating text components.
+         * @throws IllegalStateException If the [LanguageManager] is already initialized.
+         */
+        internal fun <P : IPlayer, T> initialize(textComponentFactory: (String) -> T): LanguageManager<P, T> {
+            if (::instance.isInitialized) {
+                throw IllegalStateException("LanguageManager is already initialized.")
+            }
+            instance = LanguageManager<P, T>(textComponentFactory)
+            return instance as LanguageManager<P, T>
+        }
+
+        /**
+         * Retrieves the current instance of [LanguageManager].
+         *
+         * @return The initialized [LanguageManager] instance.
+         * @throws IllegalStateException If the [LanguageManager] is not initialized.
+         */
+        internal fun <P : IPlayer, T> get(): LanguageManager<P, T> {
+            if (!::instance.isInitialized) {
+                throw IllegalStateException("LanguageManager is not initialized.")
+            }
+            return instance as LanguageManager<P, T>
+        }
+    }
+
+    val messages: MutableMap<String, MutableMap<MessageKey<*, *>, String>> = mutableMapOf()
+
+    /**
+     * Finds any missing message keys for a given language.
+     *
+     * @param lang The language code to check for missing keys.
+     * @return A list of paths for keys that are missing translations in the specified language.
+     */
     fun findMissingKeys(lang: String): List<String> {
-        val messageKeyMap: MutableMap<String, MessageKey> = mutableMapOf()
-
+        val messageKeyMap: MutableMap<String, MessageKey<P, T>> = mutableMapOf()
         scanForMessageKeys(messageKeyMap)
-
         val currentMessages = messages[lang] ?: return emptyList()
-
         val missingKeys = mutableListOf<String>()
 
         messageKeyMap.forEach { (path, key) ->
@@ -33,55 +78,59 @@ object LanguageManager {
         return missingKeys
     }
 
-    internal fun processYamlAndMapMessageKeys(data: Map<String, Any>, messageMap: MutableMap<MessageKey, String>) {
-        val messageKeyMap: MutableMap<String, MessageKey> = mutableMapOf()
-
+    /**
+     * Processes YAML data and maps message keys to their respective messages.
+     *
+     * @param data The YAML data to process.
+     * @param messageMap A mutable map to store the message keys and their corresponding messages.
+     */
+    fun processYamlAndMapMessageKeys(data: Map<String, Any>, messageMap: MutableMap<MessageKey<*, *>, String>) {
+        val messageKeyMap: MutableMap<String, MessageKey<P, T>> = mutableMapOf()
         scanForMessageKeys(messageKeyMap)
-
-        processYamlData("", data, messageKeyMap, messageMap)
+        processYamlData("", data, messageKeyMap, messageMap as MutableMap<MessageKey<P, T>, String>)
     }
 
-    private fun scanForMessageKeys(messageKeyMap: MutableMap<String, MessageKey>) {
+    // Private helper methods
+    private fun scanForMessageKeys(messageKeyMap: MutableMap<String, MessageKey<P, T>>) {
         val reflections = Reflections(
             ConfigurationBuilder()
                 .setUrls(ClasspathHelper.forPackage(Core.get().packageName))
                 .setScanners(Scanners.SubTypes)
         )
-
         val messageKeyClasses = reflections.getSubTypesOf(MessageKey::class.java)
-
         messageKeyClasses.forEach { clazz ->
             mapMessageKeys(clazz.kotlin, "", messageKeyMap)
         }
     }
 
-    private fun mapMessageKeys(clazz: KClass<out MessageKey>, currentPath: String = "", messageKeyMap: MutableMap<String, MessageKey>) {
+    private fun mapMessageKeys(clazz: KClass<out MessageKey<*, *>>, currentPath: String = "", messageKeyMap: MutableMap<String, MessageKey<P, T>>) {
         val className = clazz.simpleName?.lowercase() ?: return
-
         val fullPath = if (currentPath.isEmpty()) className else "$currentPath.$className"
-
         val objectInstance = clazz.objectInstance
         if (objectInstance != null) {
-            messageKeyMap[fullPath] = objectInstance
+            messageKeyMap[fullPath] = objectInstance as MessageKey<P, T>
             if (Core.get().isDebug) {
                 logger.info("Mapped class: $fullPath -> ${clazz.simpleName}")
             }
         }
-
         clazz.nestedClasses.forEach { nestedClass ->
             if (nestedClass.isSubclassOf(MessageKey::class)) {
-                mapMessageKeys(nestedClass as KClass<out MessageKey>, fullPath, messageKeyMap)
+                mapMessageKeys(nestedClass as KClass<out MessageKey<P, T>>, fullPath, messageKeyMap)
             }
         }
     }
 
-    private fun processYamlData(prefix: String, data: Map<String, Any>, messageKeyMap: Map<String, MessageKey>, messageMap: MutableMap<MessageKey, String>) {
+    private fun processYamlData(
+        prefix: String,
+        data: Map<String, Any>,
+        messageKeyMap: Map<String, MessageKey<P, T>>,
+        messageMap: MutableMap<MessageKey<P, T>, String>
+    ) {
         for ((key, value) in data) {
             val currentPrefix = if (prefix.isEmpty()) key else "$prefix.$key"
             if (Core.get().isDebug) {
                 logger.info("Processing YAML path: $currentPrefix")
             }
-
             when (value) {
                 is String -> {
                     val messageKey = messageKeyMap[currentPrefix]
@@ -102,71 +151,73 @@ object LanguageManager {
             }
         }
     }
-}
 
-/**
- * A sealed interface representing a message key, used to generate structured messages
- * and handle localization within the plugin. This interface allows message keys to be
- * nested, following a structured hierarchy that corresponds to YAML structure.
- *
- * Implementing classes can define their own message keys as nested objects.
- * The `c()` method provides a default fallback, returning the key's simple name,
- * and the `t()` method retrieves the localized message for a given player.
- *
- * Example usage:
- *
- * ```kotlin
- * open class Main : MessageKey {
- *     open class Gui : Main() {
- *         open class Title : Gui() {
- *             object MAIN_BOARD : Title()
- *             [...]
- *         }
- *     }
- * }
- * ```
- *
- * By structuring message keys this way, the key paths are automatically recognized,
- * and corresponding YAML files can be created to match the hierarchy. For example,
- * `Main.Gui.Title.MAIN_BOARD` will map to a key in the YAML file following that structure.
- *
- * **Note:** YAML keys should all be written in lowercase, as the system automatically
- * converts class names to lowercase for key matching. If the keys in the YAML file are
- * not lowercase, they will not be recognized correctly.
- */
-interface MessageKey {
     /**
-     * Returns the default message or key name as a [TextComponent], using the simple name of the class.
-     * This is used as a fallback when no localized message is found.
+     * Retrieves a localized message for the given player and message key, formatting
+     * it with the specified arguments.
      *
-     * @return A [TextComponent] containing the simple name of the message key class.
+     * @param player The player for whom the message is intended.
+     * @param key The message key to retrieve.
+     * @param args The arguments to format the message.
+     * @return The localized message as a text component.
      */
-    fun c(): TextComponent {
-        return Component.text(this.javaClass.simpleName)
+    fun getMessage(player: P, key: MessageKey<P, T>, vararg args: Any): T {
+        val lang = player.getLanguage()
+        val message = messages[lang]?.get(key)
+        val text = message?.let { String.format(it, *args) } ?: return key.c()
+        return textComponentFactory(text)
     }
 
     /**
-     * Retrieves the raw string representation of the message key, without any formatting.
-     * This can be useful when working with systems that do not support TextComponent.
+     * Retrieves a localized message for the player or returns a default message if the key is missing.
      *
-     * @return A [String] representing the raw message key or the key's simple name if no message is found.
+     * @param player The player for whom the message is intended.
+     * @param key The message key to retrieve.
+     * @param defaultMessage The default message to use if the key is missing.
+     * @param args The arguments to format the message.
+     * @return The localized message as a text component.
      */
-    fun rc(): String {
-        return this.javaClass.simpleName
+    fun getMessageOrDefault(player: P, key: MessageKey<P, T>, defaultMessage: String, vararg args: Any): T {
+        val lang = player.getLanguage()
+        val message = messages[lang]?.get(key)
+        val text = message?.let { String.format(it, *args) } ?: defaultMessage
+        return textComponentFactory(text)
     }
 
     /**
-     * Logs the message key as a message to the console.
+     * Retrieves the raw, untranslated message string for a given player and key.
      *
-     * @param level The logging level (INFO, WARN, ERROR, etc.).
+     * @param player The player for whom the message is intended.
+     * @param key The message key to retrieve.
+     * @return The untranslated message as a string.
      */
-    fun log(level: String = "INFO") {
-        val message = rc()
-        when (level.uppercase()) {
-            "INFO" -> logger.info(message)
-            "WARN" -> logger.warn(message)
-            "ERROR" -> logger.error(message)
-            else -> logger.debug(message)
-        }
+    fun getRawMessage(player: P, key: MessageKey<P, T>): String {
+        return messages[player.getLanguage()]?.get(key) ?: key.rc()
+    }
+
+    /**
+     * Retrieves a system-level message in the default locale.
+     *
+     * @param key The message key to retrieve.
+     * @param args The arguments to format the message.
+     * @return The system message as a string.
+     */
+    fun getSysMessage(key: MessageKey<P, T>, vararg args: Any): String {
+        val lang = Locale.getDefault().language
+        val message = messages[lang]?.get(key)
+        val text = message?.let { String.format(it, *args) } ?: return key.rc()
+        return text
+    }
+
+    /**
+     * Checks if a localized message exists for a given player and key.
+     *
+     * @param player The player for whom the message is intended.
+     * @param key The message key to check.
+     * @return `true` if a localized message exists; otherwise, `false`.
+     */
+    fun hasMessage(player: P, key: MessageKey<P, T>): Boolean {
+        val lang = player.getLanguage()
+        return messages[lang]?.containsKey(key) ?: false
     }
 }

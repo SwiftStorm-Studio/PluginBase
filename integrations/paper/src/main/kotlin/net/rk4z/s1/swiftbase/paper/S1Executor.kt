@@ -20,13 +20,16 @@ class S1Executor internal constructor(private val plugin: JavaPlugin) : S0Execut
 
     override fun <T> submitAsync(task: Callable<T>): Future<T> {
         checkShutdown()
-        val future = CompletableFuture.supplyAsync {
+        val future = CompletableFuture<T>()
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
             try {
-                task.call()
+                future.complete(task.call())
             } catch (e: Exception) {
-                throw RuntimeException("Task execution failed", e)
+                future.completeExceptionally(RuntimeException("Task execution failed", e))
             }
-        }
+        })
+
         runningTasks.add(future)
         return future
     }
