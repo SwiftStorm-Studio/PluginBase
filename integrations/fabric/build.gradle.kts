@@ -6,6 +6,8 @@ plugins {
     id ("fabric-loom") apply true
 }
 
+version = "1.1.1"
+
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")
     mappings("net.fabricmc:yarn:1.21.3+build.2")

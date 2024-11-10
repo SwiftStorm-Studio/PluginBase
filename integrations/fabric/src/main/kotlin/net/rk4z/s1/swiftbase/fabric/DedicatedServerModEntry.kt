@@ -3,6 +3,7 @@ package net.rk4z.s1.swiftbase.fabric
 import net.fabricmc.api.DedicatedServerModInitializer
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.loader.api.FabricLoader
+import net.fabricmc.loader.api.metadata.ModMetadata
 import net.minecraft.text.Text
 import net.rk4z.s1.swiftbase.core.Core
 import net.rk4z.s1.swiftbase.core.LanguageManager
@@ -10,6 +11,7 @@ import net.rk4z.s1.swiftbase.core.MessageKey
 import net.rk4z.s1.swiftbase.core.SystemHelper
 import org.jetbrains.annotations.NotNull
 import org.reflections.Reflections.log
+import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
@@ -22,8 +24,16 @@ open class DedicatedServerModEntry(
      *
      * You should set the package name of the main class of your plugin.
      */
+
     @NotNull
     val packageName: String,
+
+    @NotNull
+    val configFileRoot: String,
+
+    @NotNull
+    val langDirRoot: String,
+
     val isDebug: Boolean = false,
     var enableUpdateChecker: Boolean = true,
     val modrinthID: String? = null,
@@ -61,10 +71,10 @@ open class DedicatedServerModEntry(
     var onUpdateCheckFailed: (responseCode: Int) -> Unit = {}
     var onUpdateCheckError: (e: Exception) -> Unit = {}
 
-    val loader = FabricLoader.getInstance()
-    val dataFolder = loader.gameDir.resolve(id).toFile()
-    val meta = loader.getModContainer(id).get().metadata
-    val version = meta.version.friendlyString
+    val loader: FabricLoader = FabricLoader.getInstance()
+    val dataFolder: File = loader.gameDir.resolve(id).toFile()
+    val meta: ModMetadata = loader.getModContainer(id).get().metadata
+    val version: String = meta.version.friendlyString
 
     override fun onInitializeServer() {
         if (!ModEntry.isInitialized) {
@@ -99,7 +109,9 @@ open class DedicatedServerModEntry(
             useLanguageSystem,
             isDebug,
             availableLang,
-            S2Executor()
+            S2Executor(),
+            configFileRoot,
+            langDirRoot
         )
         instance = this
         languageManager = SystemHelper.createLanguageManager<FabricPlayerAdapter, Text>(fabricTextComponentFactory)

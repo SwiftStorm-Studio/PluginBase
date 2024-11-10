@@ -22,6 +22,13 @@ open class PluginEntry(
      */
     @NotNull
     val packageName: String,
+
+    @NotNull
+    val configFileRoot: String,
+
+    @NotNull
+    val langDirRoot: String,
+
     val isDebug: Boolean = false,
     var enableMetrics: Boolean = false,
     val serviceId: Int? = null,
@@ -73,7 +80,9 @@ open class PluginEntry(
             useLanguageSystem,
             isDebug,
             availableLang,
-            S1Executor(this)
+            S1Executor(this),
+            configFileRoot,
+            langDirRoot
         )
         instance = getPlugin(this::class.java)
         key = NamespacedKey(this, id)

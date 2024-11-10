@@ -12,7 +12,9 @@ object SystemHelper {
         useLanguageSystem: Boolean = true,
         isDebug: Boolean = false,
         availableLang: List<String>? = null,
-        executor: S0Executor
+        executor: S0Executor,
+        configFileRoot: String,
+        langDirRoot: String
     ): Core {
         return Core.initialize(
             packageName,
@@ -23,7 +25,9 @@ object SystemHelper {
             useLanguageSystem,
             isDebug,
             availableLang,
-            executor
+            executor,
+            configFileRoot,
+            langDirRoot
         )
     }
 

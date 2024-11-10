@@ -20,7 +20,6 @@ subprojects {
     apply(plugin = "maven-publish")
 
     group = rootProject.group
-    version = rootProject.version
 
     repositories {
         mavenCentral()

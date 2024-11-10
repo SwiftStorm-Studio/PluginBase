@@ -6,6 +6,8 @@ val localProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }
 
+version = "1.1.1"
+
 publishing {
     publications {
         // Core用のパッケージ

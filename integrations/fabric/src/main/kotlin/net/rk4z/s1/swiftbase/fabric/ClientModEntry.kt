@@ -25,8 +25,16 @@ open class ClientModEntry(
      *
      * You should set the package name of the main class of your plugin.
      */
+
     @NotNull
     val packageName: String,
+
+    @NotNull
+    val configFileRoot: String,
+
+    @NotNull
+    val langDirRoot: String,
+
     val isDebug: Boolean = false,
     var enableUpdateChecker: Boolean = true,
     val modrinthID: String? = null,
@@ -103,7 +111,9 @@ open class ClientModEntry(
             useLanguageSystem,
             isDebug,
             availableLang,
-            S2Executor()
+            S2Executor(),
+            configFileRoot,
+            langDirRoot
         )
         instance = this
         languageManager = SystemHelper.createLanguageManager<FabricPlayerAdapter, Text>(fabricTextComponentFactory)

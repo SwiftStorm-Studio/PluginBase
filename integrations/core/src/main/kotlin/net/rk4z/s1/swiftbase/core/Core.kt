@@ -28,7 +28,19 @@ class Core private constructor(
     val useLanguageSystem: Boolean = true,
     val isDebug: Boolean = false,
     val availableLang: List<String>? = null,
-    val executor: S0Executor
+    val executor: S0Executor,
+    /**
+     * The root directory of the config files in the JAR.
+     * This directory should contain the default config file for the plugin.
+     * The default config file should be named as the default language code (e.g. `en.yml`).
+     */
+    val configFileRoot: String,
+    /**
+     * The root directory of the language files in the JAR.
+     * This directory should contain the default language files for the plugin.
+     * The default language files should be named as the language code (e.g. `en.yml`).
+     */
+    val langDirRoot: String
 ) {
     companion object {
         private lateinit var instance: Core
@@ -44,7 +56,9 @@ class Core private constructor(
             useLanguageSystem: Boolean = true,
             isDebug: Boolean = false,
             availableLang: List<String>? = null,
-            executor: S0Executor
+            executor: S0Executor,
+            configFileRoot: String,
+            langDirRoot: String
         ): Core {
             if (::instance.isInitialized) {
                 throw IllegalStateException("Core instance is already initialized.")
@@ -59,7 +73,9 @@ class Core private constructor(
                 useLanguageSystem,
                 isDebug,
                 availableLang,
-                executor
+                executor,
+                configFileRoot,
+                langDirRoot
             )
             return instance
         }
@@ -132,7 +148,7 @@ class Core private constructor(
         availableLang?.let {
             it.forEach { lang ->
                 val langFile = File(langDir, "$lang.yml")
-                val langResource = "lang/$lang.yml"
+                val langResource = "$langDirRoot/$lang.yml"
 
                 helper.getResource(langResource)?.use { resourceStream ->
                     val resourceBytes = resourceStream.readBytes()
@@ -183,8 +199,8 @@ class Core private constructor(
 
     private fun createConfigIfNotExists() {
         val defaultConfigLang = Locale.getDefault().language
-        val configFileName = "config/${defaultConfigLang}.yml"
-        helper.getResource(configFileName)?.use { inputStream ->
+        val configResource = "$configFileRoot/${defaultConfigLang}.yml"
+        helper.getResource(configResource)?.use { inputStream ->
             val targetConfigFile = File(dataFolder, "config.yml")
             if (!targetConfigFile.exists()) Files.copy(inputStream, targetConfigFile.toPath())
         }
