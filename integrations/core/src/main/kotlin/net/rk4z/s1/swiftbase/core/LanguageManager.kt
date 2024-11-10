@@ -54,17 +54,18 @@ class LanguageManager<P : IPlayer, T> private constructor(
         }
     }
 
-    val messages: MutableMap<String, MutableMap<MessageKey<*, *>, String>> = mutableMapOf()
+    val messages: MutableMap<String, MutableMap<out MessageKey<*, *>, String>> = mutableMapOf()
 
     /**
      * Finds any missing message keys for a given language.
      *
      * @param lang The language code to check for missing keys.
+     * @param expectedType The expected type of the message key.
      * @return A list of paths for keys that are missing translations in the specified language.
      */
-    fun findMissingKeys(lang: String): List<String> {
+    fun findMissingKeys(lang: String, expectedType: KClass<out MessageKey<P, T>>): List<String> {
         val messageKeyMap: MutableMap<String, MessageKey<P, T>> = mutableMapOf()
-        scanForMessageKeys(messageKeyMap)
+        scanForMessageKeys(messageKeyMap, expectedType)
         val currentMessages = messages[lang] ?: return emptyList()
         val missingKeys = mutableListOf<String>()
 
@@ -83,15 +84,23 @@ class LanguageManager<P : IPlayer, T> private constructor(
      *
      * @param data The YAML data to process.
      * @param messageMap A mutable map to store the message keys and their corresponding messages.
+     * @param expectedType The expected type of the message key.
      */
-    fun processYamlAndMapMessageKeys(data: Map<String, Any>, messageMap: MutableMap<MessageKey<*, *>, String>) {
+    fun <P : IPlayer, T> processYamlAndMapMessageKeys(
+        data: Map<String, Any>,
+        messageMap: MutableMap<MessageKey<P, T>, String>,
+        expectedType: KClass<out MessageKey<P, T>>
+    ) {
         val messageKeyMap: MutableMap<String, MessageKey<P, T>> = mutableMapOf()
-        scanForMessageKeys(messageKeyMap)
-        processYamlData("", data, messageKeyMap, messageMap as MutableMap<MessageKey<P, T>, String>)
+        scanForMessageKeys(messageKeyMap, expectedType)
+        processYamlData("", data, messageKeyMap, messageMap)
     }
 
     // Private helper methods
-    private fun scanForMessageKeys(messageKeyMap: MutableMap<String, MessageKey<P, T>>) {
+    private fun <P : IPlayer, T> scanForMessageKeys(
+        messageKeyMap: MutableMap<String, MessageKey<P, T>>,
+        expectedType: KClass<out MessageKey<P, T>>
+    ) {
         val reflections = Reflections(
             ConfigurationBuilder()
                 .setUrls(ClasspathHelper.forPackage(Core.get().packageName))
@@ -99,28 +108,44 @@ class LanguageManager<P : IPlayer, T> private constructor(
         )
         val messageKeyClasses = reflections.getSubTypesOf(MessageKey::class.java)
         messageKeyClasses.forEach { clazz ->
-            mapMessageKeys(clazz.kotlin, "", messageKeyMap)
+            mapMessageKeys(clazz.kotlin, expectedType, "", messageKeyMap)
         }
     }
 
-    private fun mapMessageKeys(clazz: KClass<out MessageKey<*, *>>, currentPath: String = "", messageKeyMap: MutableMap<String, MessageKey<P, T>>) {
+    private fun <P : IPlayer, T> mapMessageKeys(
+        clazz: KClass<out MessageKey<*, *>>,
+        expectedType: KClass<out MessageKey<P, T>>,
+        currentPath: String = "",
+        messageKeyMap: MutableMap<String, MessageKey<P, T>>
+    ) {
         val className = clazz.simpleName?.lowercase() ?: return
         val fullPath = if (currentPath.isEmpty()) className else "$currentPath.$className"
+
+        if (clazz == expectedType || clazz.isSubclassOf(expectedType)) {
+            clazz.nestedClasses.forEach { nestedClass ->
+                if (nestedClass.isSubclassOf(MessageKey::class)) {
+                    mapMessageKeys(nestedClass as KClass<out MessageKey<*, *>>, expectedType, currentPath, messageKeyMap)
+                }
+            }
+            return
+        }
+
         val objectInstance = clazz.objectInstance
-        if (objectInstance != null) {
+        if (expectedType.isInstance(objectInstance)) {
             messageKeyMap[fullPath] = objectInstance as MessageKey<P, T>
             if (Core.get().isDebug) {
                 logger.info("Mapped class: $fullPath -> ${clazz.simpleName}")
             }
         }
+
         clazz.nestedClasses.forEach { nestedClass ->
             if (nestedClass.isSubclassOf(MessageKey::class)) {
-                mapMessageKeys(nestedClass as KClass<out MessageKey<P, T>>, fullPath, messageKeyMap)
+                mapMessageKeys(nestedClass as KClass<out MessageKey<*, *>>, expectedType, fullPath, messageKeyMap)
             }
         }
     }
 
-    private fun processYamlData(
+    private fun <P : IPlayer, T> processYamlData(
         prefix: String,
         data: Map<String, Any>,
         messageKeyMap: Map<String, MessageKey<P, T>>,

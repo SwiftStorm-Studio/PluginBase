@@ -12,9 +12,9 @@ publishing {
     publications {
         // Core用のパッケージ
         create<MavenPublication>("core") {
-            groupId = rootProject.group.toString()
+            groupId = project.group.toString()
             artifactId = "${rootProject.name}-core"
-            version = rootProject.version.toString()
+            version = project.version.toString()
 
             from(components["java"])
 

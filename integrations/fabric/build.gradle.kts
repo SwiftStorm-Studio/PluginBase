@@ -20,25 +20,16 @@ val localProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }
 
-val fabricJar by tasks.registering(Jar::class) {
-    archiveClassifier.set("fabric")
-    from(sourceSets.main.get().output)
-}
-
 publishing {
     publications {
         // Fabric用のパッケージ
         create<MavenPublication>("fabric") {
-            groupId = rootProject.group.toString()
+            groupId = project.group.toString()
             artifactId = "${rootProject.name}-fabric"
-            version = rootProject.version.toString()
+            version = project.version.toString()
 
-            // プラットフォームごとのJarをアタッチ
-            artifact(tasks.named("fabricJar")) {
-                classifier = "fabric"
-            }
+            from(components["java"])
 
-            // POM情報
             pom {
                 name.set("SwiftBase Fabric")
                 description.set("Base code by SwiftStormStudio for FabricMod.")

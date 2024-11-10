@@ -152,9 +152,9 @@ open class PluginEntry(
                 if (Files.exists(langFile.toPath())) {
                     Files.newBufferedReader(langFile.toPath(), StandardCharsets.UTF_8).use { reader ->
                         val data: Map<String, Any> = core.yaml.load(reader)
-                        val messageMap: MutableMap<MessageKey<*, *>, String> = mutableMapOf()
-                        languageManager.processYamlAndMapMessageKeys(data, messageMap)
-                        languageManager.messages[lang] = messageMap
+                        val messageMap: MutableMap<MessageKey<PaperPlayerAdapter, TextComponent>, String> = mutableMapOf()
+                        languageManager.processYamlAndMapMessageKeys(data, messageMap, PaperMessageKey::class)
+                        languageManager.messages[lang] = messageMap as MutableMap<PaperMessageKey, String>
                     }
                 } else {
                     log.warn("Language file for '$lang' not found.")

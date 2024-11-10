@@ -17,9 +17,9 @@ publishing {
     publications {
         // Paper用のパッケージ
         create<MavenPublication>("paper") {
-            groupId = rootProject.group.toString()
+            groupId = project.group.toString()
             artifactId = "${rootProject.name}-paper"
-            version = rootProject.version.toString()
+            version = project.version.toString()
 
             from(components["java"])
 

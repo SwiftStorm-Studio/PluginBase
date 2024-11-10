@@ -62,7 +62,3 @@ subprojects {
         isFailOnError = false
     }
 }
-
-tasks.register("publishAll") {
-    dependsOn(subprojects.map { it.tasks.named("sonatypeCentralUpload") })
-}
