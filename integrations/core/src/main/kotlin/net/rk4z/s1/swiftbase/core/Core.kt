@@ -1,7 +1,6 @@
 package net.rk4z.s1.swiftbase.core
 
 import org.json.JSONArray
-import org.reflections.Reflections.log
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml.Yaml
@@ -40,12 +39,15 @@ class Core private constructor(
      * This directory should contain the default language files for the plugin.
      * The default language files should be named as the language code (e.g. `en.yml`).
      */
-    val langDirRoot: String
+    val langDirRoot: String,
+    val pl: Logger
 ) {
     companion object {
         private lateinit var instance: Core
 
         internal val logger: Logger = LoggerFactory.getLogger("SwiftBase")
+
+        var platformLogger: Logger? = null
 
         internal fun initialize(
             packageName: String,
@@ -58,7 +60,8 @@ class Core private constructor(
             availableLang: List<String>? = null,
             executor: S0Executor,
             configFileRoot: String,
-            langDirRoot: String
+            langDirRoot: String,
+            logger: Logger
         ): Core {
             if (::instance.isInitialized) {
                 throw IllegalStateException("Core instance is already initialized.")
@@ -75,7 +78,8 @@ class Core private constructor(
                 availableLang,
                 executor,
                 configFileRoot,
-                langDirRoot
+                langDirRoot,
+                logger
             )
             return instance
         }
@@ -163,7 +167,7 @@ class Core private constructor(
                     }
 
                     if (isVersionNewer(jarLangVersion, installedLangVersion)) {
-                        log.info("Replacing old $lang language file (version: $installedLangVersion) with newer version: $jarLangVersion")
+                        logger.info("Replacing old $lang language file (version: $installedLangVersion) with newer version: $jarLangVersion")
                         resourceBytes.inputStream().use { byteArrayStream ->
                             Files.copy(
                                 byteArrayStream,
@@ -172,7 +176,7 @@ class Core private constructor(
                             )
                         }
                     }
-                } ?: log.warn("Resource file '$langResource' not found in the Jar.")
+                } ?: logger.warn("Resource file '$langResource' not found in the Jar.")
             }
         }
     }

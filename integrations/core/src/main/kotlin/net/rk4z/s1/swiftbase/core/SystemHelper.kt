@@ -1,5 +1,6 @@
 package net.rk4z.s1.swiftbase.core
 
+import org.slf4j.Logger
 import java.io.File
 
 object SystemHelper {
@@ -14,7 +15,8 @@ object SystemHelper {
         availableLang: List<String>? = null,
         executor: S0Executor,
         configFileRoot: String,
-        langDirRoot: String
+        langDirRoot: String,
+        pl: Logger
     ): Core {
         return Core.initialize(
             packageName,
@@ -27,7 +29,8 @@ object SystemHelper {
             availableLang,
             executor,
             configFileRoot,
-            langDirRoot
+            langDirRoot,
+            pl
         )
     }
 

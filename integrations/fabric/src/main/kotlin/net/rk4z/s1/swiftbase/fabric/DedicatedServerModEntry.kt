@@ -5,12 +5,9 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.fabricmc.loader.api.metadata.ModMetadata
 import net.minecraft.text.Text
-import net.rk4z.s1.swiftbase.core.Core
-import net.rk4z.s1.swiftbase.core.LanguageManager
-import net.rk4z.s1.swiftbase.core.MessageKey
-import net.rk4z.s1.swiftbase.core.SystemHelper
+import net.rk4z.s1.swiftbase.core.*
 import org.jetbrains.annotations.NotNull
-import org.reflections.Reflections.log
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -111,7 +108,8 @@ open class DedicatedServerModEntry(
             availableLang,
             S2Executor(),
             configFileRoot,
-            langDirRoot
+            langDirRoot,
+            LoggerFactory.getLogger(this::class.java.simpleName)
         )
         instance = this
         languageManager = SystemHelper.createLanguageManager<FabricPlayerAdapter, Text>(fabricTextComponentFactory)
@@ -164,7 +162,7 @@ open class DedicatedServerModEntry(
                         languageManager.messages[lang] = messageMap as MutableMap<FabricMessageKey, String>
                     }
                 } else {
-                    log.warn("Language file for '$lang' not found.")
+                    Logger?.warn("Language file for '$lang' not found.")
                 }
             }
         }

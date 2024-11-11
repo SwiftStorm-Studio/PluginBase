@@ -3,10 +3,10 @@ import java.io.FileInputStream
 import java.util.*
 
 plugins {
-    id ("fabric-loom") apply true
+    id ("fabric-loom")
 }
 
-version = "1.1.1"
+version = "1.1.2"
 
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")

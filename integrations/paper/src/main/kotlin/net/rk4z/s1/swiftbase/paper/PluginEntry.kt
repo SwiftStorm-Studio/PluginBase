@@ -7,7 +7,8 @@ import net.rk4z.s1.swiftbase.core.*
 import org.bukkit.NamespacedKey
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.annotations.NotNull
-import org.reflections.Reflections.log
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
@@ -55,6 +56,10 @@ open class PluginEntry(
         lateinit var languageManager: LanguageManager<*, *>
             private set
 
+        @JvmStatic
+        lateinit var logger: Logger
+            private set
+
         fun <I : PluginEntry> get() : I? {
             return instance as? I
         }
@@ -82,11 +87,13 @@ open class PluginEntry(
             availableLang,
             S1Executor(this),
             configFileRoot,
-            langDirRoot
+            langDirRoot,
+            LoggerFactory.getLogger(this::class.java.simpleName)
         )
         instance = getPlugin(this::class.java)
         key = NamespacedKey(this, id)
         languageManager = SystemHelper.createLanguageManager<PaperPlayerAdapter, TextComponent>(paperTextComponentFactory)
+        Companion.logger = LoggerFactory.getLogger(this::class.java.simpleName)
 
         this.onCheckUpdate = core.onCheckUpdate
         this.onAllVersionsRetrieved = core.onAllVersionsRetrieved
@@ -157,7 +164,7 @@ open class PluginEntry(
                         languageManager.messages[lang] = messageMap as MutableMap<PaperMessageKey, String>
                     }
                 } else {
-                    log.warn("Language file for '$lang' not found.")
+                    Logger?.warn("Language file for '$lang' not found.")
                 }
             }
         }
