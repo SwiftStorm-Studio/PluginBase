@@ -3,7 +3,7 @@ package net.rk4z.s1.swiftbase.core
 import net.rk4z.s1.swiftbase.core.Core.Companion.logger
 
 /**
- * A interface representing a message key, used to generate structured messages
+ * An interface representing a message key, used to generate structured messages
  * and handle localization within the plugin. This interface allows message keys to be
  * nested, following a structured hierarchy that corresponds to YAML structure.
  *
@@ -41,7 +41,8 @@ interface MessageKey<P : IPlayer, T> {
      * @return A default text component generated from the key's simple name.
      */
     fun c(): T {
-        return LanguageManager.get<P, T>().textComponentFactory(this.javaClass.simpleName)
+        val clm = LanguageManager.get<P, T>()
+        return clm.textComponentFactory(this.javaClass.simpleName)
     }
 
     /**
@@ -75,6 +76,7 @@ interface MessageKey<P : IPlayer, T> {
      * @return The localized message as a text component.
      */
     fun t(player: P): T {
-        return LanguageManager.get<P, T>().getMessage(player, this)
+        val clm = LanguageManager.get<P, T>()
+        return clm.getMessage(player, this)
     }
 }

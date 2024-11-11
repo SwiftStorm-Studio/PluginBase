@@ -6,7 +6,7 @@ import org.bukkit.plugin.java.JavaPlugin
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 
-@Suppress("DuplicatedCode")
+@Suppress("DuplicatedCode", "unused")
 class S1Executor internal constructor(private val plugin: JavaPlugin) : S0Executor {
     private val isShutdown = AtomicBoolean(false)
     private val runningTasks = mutableListOf<Future<*>>()

@@ -1,10 +1,15 @@
 package net.rk4z.s1.swiftbase.core
 
-import org.slf4j.Logger
-import java.io.File
-import kotlin.reflect.KClass
 
+import java.io.File
+
+//TODO: createCore関数のKDocを細かく書く
 object SystemHelper {
+
+    /**
+     * Create a new core system.
+     * @see Core
+     */
     fun createCore(
         packageName: String,
         dataFolder: File,
@@ -17,9 +22,10 @@ object SystemHelper {
         executor: S0Executor,
         configFileRoot: String,
         langDirRoot: String,
-        pl: Logger
     ): Core {
-        return Core.initialize(
+        if (Core.isInitialized()) throw IllegalStateException("Core is already initialized.")
+
+        return Core(
             packageName,
             dataFolder,
             version,
@@ -30,12 +36,7 @@ object SystemHelper {
             availableLang,
             executor,
             configFileRoot,
-            langDirRoot,
-            pl
+            langDirRoot
         )
-    }
-
-    fun <P : IPlayer, T> createLanguageManager(textComponentFactory: (String) -> T, expectedType: KClass<out MessageKey<P, T>>): LanguageManager<P, T> {
-        return LanguageManager.initialize(textComponentFactory, expectedType)
     }
 }
