@@ -56,10 +56,6 @@ open class PluginEntry(
         lateinit var languageManager: LanguageManager<*, *>
             private set
 
-        @JvmStatic
-        lateinit var logger: Logger
-            private set
-
         fun <I : PluginEntry> get() : I? {
             return instance as? I
         }
@@ -92,8 +88,8 @@ open class PluginEntry(
         )
         instance = getPlugin(this::class.java)
         key = NamespacedKey(this, id)
-        languageManager = SystemHelper.createLanguageManager<PaperPlayerAdapter, TextComponent>(paperTextComponentFactory)
-        Companion.logger = LoggerFactory.getLogger(this::class.java.simpleName)
+        languageManager = SystemHelper.createLanguageManager(paperTextComponentFactory, PaperMessageKey::class)
+        Core.Companion.platformLogger = LoggerFactory.getLogger(this::class.java.simpleName)
 
         this.onCheckUpdate = core.onCheckUpdate
         this.onAllVersionsRetrieved = core.onAllVersionsRetrieved
@@ -164,7 +160,7 @@ open class PluginEntry(
                         languageManager.messages[lang] = messageMap as MutableMap<PaperMessageKey, String>
                     }
                 } else {
-                    Logger?.warn("Language file for '$lang' not found.")
+                    Logger.warn("Language file for '$lang' not found.")
                 }
             }
         }

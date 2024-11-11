@@ -16,26 +16,33 @@ class ResourceHelper internal constructor(
 ) {
 
     /**
-     * Saves a specified resource from the JAR to the `dataFolder`. Creates any necessary
-     * directories if they do not already exist.
+     * Saves a specified resource from the JAR to the `dataFolder` or a specified output directory.
+     * Creates any necessary directories if they do not already exist.
      *
      * @param resourcePath The path of the resource within the JAR file.
      * @param replace Specifies whether to replace the file if it already exists.
+     * @param outPath Optional output path where the file should be saved. If null, defaults to `dataFolder`.
      * @throws IllegalArgumentException If the resource path is empty or the resource is not found in the JAR.
      */
-    fun saveResource(@NotNull resourcePath: String, replace: Boolean) {
+    fun saveResource(@NotNull resourcePath: String, replace: Boolean, outPath: String? = null) {
         if (resourcePath.isEmpty()) {
             throw IllegalArgumentException("ResourcePath cannot be null or empty")
         }
+
+        logger.info("Finding resource $resourcePath")
 
         val sanitizedPath = resourcePath.replace('\\', '/')
         val inputStream = getResource(sanitizedPath)
             ?: throw IllegalArgumentException("The embedded resource '$sanitizedPath' cannot be found in the plugin JAR.")
 
-        val outFile = File(dataFolder, sanitizedPath)
-        val lastIndex = sanitizedPath.lastIndexOf('/')
-        val outDir = File(dataFolder, sanitizedPath.substring(0, if (lastIndex >= 0) lastIndex else 0))
+        val outputFolder = outPath?.let { File(it) } ?: dataFolder
+        val outFile = if (outPath != null) {
+            File(outputFolder, File(sanitizedPath).name)
+        } else {
+            File(outputFolder, sanitizedPath)
+        }
 
+        val outDir = outFile.parentFile
         if (!outDir.exists()) {
             outDir.mkdirs()
         }
@@ -55,6 +62,7 @@ class ResourceHelper internal constructor(
             logger.warn("Could not save $outFile: ${ex.message}")
         }
     }
+
 
     /**
      * Retrieves an embedded resource from the JAR as an [InputStream].

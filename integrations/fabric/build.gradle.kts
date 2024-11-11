@@ -6,7 +6,7 @@ plugins {
     id ("fabric-loom")
 }
 
-version = "1.1.2"
+version = "1.1.3"
 
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")

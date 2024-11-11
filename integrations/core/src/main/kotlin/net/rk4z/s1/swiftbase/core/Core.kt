@@ -47,7 +47,7 @@ class Core private constructor(
 
         internal val logger: Logger = LoggerFactory.getLogger("SwiftBase")
 
-        var platformLogger: Logger? = null
+        var platformLogger: Logger = LoggerFactory.getLogger("")
 
         internal fun initialize(
             packageName: String,
@@ -214,7 +214,7 @@ class Core private constructor(
         if (!langDir.exists()) langDir.mkdirs()
         availableLang?.forEach { lang ->
             langDir.resolve("$lang.yml").apply {
-                if (this.toPath().notExists()) helper.saveResource("lang/$lang.yml", false)
+                if (this.toPath().notExists()) helper.saveResource("$langDirRoot/$lang.yml", false, langDir.absolutePath)
             }
         }
     }

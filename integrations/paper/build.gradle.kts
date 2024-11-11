@@ -2,7 +2,7 @@ import cl.franciscosolis.sonatypecentralupload.SonatypeCentralUploadTask
 import java.io.FileInputStream
 import java.util.*
 
-version = "1.1.2"
+version = "1.1.5"
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")

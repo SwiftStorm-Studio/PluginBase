@@ -2,6 +2,7 @@ package net.rk4z.s1.swiftbase.core
 
 import org.slf4j.Logger
 import java.io.File
+import kotlin.reflect.KClass
 
 object SystemHelper {
     fun createCore(
@@ -34,7 +35,7 @@ object SystemHelper {
         )
     }
 
-    fun <P : IPlayer, T> createLanguageManager(textComponentFactory: (String) -> T): LanguageManager<P, T> {
-        return LanguageManager.initialize(textComponentFactory)
+    fun <P : IPlayer, T> createLanguageManager(textComponentFactory: (String) -> T, expectedType: KClass<out MessageKey<P, T>>): LanguageManager<P, T> {
+        return LanguageManager.initialize(textComponentFactory, expectedType)
     }
 }

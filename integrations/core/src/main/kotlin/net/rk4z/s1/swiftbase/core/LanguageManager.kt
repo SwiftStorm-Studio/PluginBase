@@ -18,9 +18,10 @@ import kotlin.reflect.full.isSubclassOf
  * @param T The text component type used to display messages.
  * @property textComponentFactory A factory function to create text components of type [T].
  */
-@Suppress("UNCHECKED_CAST", "unused")
+@Suppress("UNCHECKED_CAST", "unused", "DuplicatedCode")
 class LanguageManager<P : IPlayer, T> private constructor(
-    internal val textComponentFactory: (String) -> T
+    internal val textComponentFactory: (String) -> T,
+    private val expectedType: KClass<out MessageKey<P, T>>
 ) {
     companion object {
         private lateinit var instance: LanguageManager<*, *>
@@ -32,11 +33,14 @@ class LanguageManager<P : IPlayer, T> private constructor(
          * @param textComponentFactory A factory function for creating text components.
          * @throws IllegalStateException If the [LanguageManager] is already initialized.
          */
-        internal fun <P : IPlayer, T> initialize(textComponentFactory: (String) -> T): LanguageManager<P, T> {
+        internal fun <P : IPlayer, T> initialize(
+            textComponentFactory: (String) -> T,
+            expectedType: KClass<out MessageKey<P, T>>
+        ): LanguageManager<P, T> {
             if (::instance.isInitialized) {
                 throw IllegalStateException("LanguageManager is already initialized.")
             }
-            instance = LanguageManager<P, T>(textComponentFactory)
+            instance = LanguageManager(textComponentFactory, expectedType)
             return instance as LanguageManager<P, T>
         }
 
@@ -186,9 +190,15 @@ class LanguageManager<P : IPlayer, T> private constructor(
      * @param args The arguments to format the message.
      * @return The localized message as a text component.
      */
-    fun getMessage(player: P, key: MessageKey<P, T>, vararg args: Any): T {
+    fun getMessage(player: P, key: MessageKey<*, *>, vararg args: Any): T {
+        if (!expectedType.isInstance(key)) {
+            throw IllegalArgumentException("The provided key is not of the expected type: ${expectedType.simpleName}")
+        }
+
+        val castedKey = key as MessageKey<P, T>
+
         val lang = player.getLanguage()
-        val message = messages[lang]?.get(key)
+        val message = messages[lang]?.get(castedKey)
         val text = message?.let { String.format(it, *args) } ?: return key.c()
         return textComponentFactory(text)
     }
@@ -202,9 +212,15 @@ class LanguageManager<P : IPlayer, T> private constructor(
      * @param args The arguments to format the message.
      * @return The localized message as a text component.
      */
-    fun getMessageOrDefault(player: P, key: MessageKey<P, T>, defaultMessage: String, vararg args: Any): T {
+    fun getMessageOrDefault(player: P, key: MessageKey<*, *>, defaultMessage: String, vararg args: Any): T {
+        if (!expectedType.isInstance(key)) {
+            throw IllegalArgumentException("The provided key is not of the expected type: ${expectedType.simpleName}")
+        }
+
+        val castedKey = key as MessageKey<P, T>
+
         val lang = player.getLanguage()
-        val message = messages[lang]?.get(key)
+        val message = messages[lang]?.get(castedKey)
         val text = message?.let { String.format(it, *args) } ?: defaultMessage
         return textComponentFactory(text)
     }
@@ -227,9 +243,15 @@ class LanguageManager<P : IPlayer, T> private constructor(
      * @param args The arguments to format the message.
      * @return The system message as a string.
      */
-    fun getSysMessage(key: MessageKey<P, T>, vararg args: Any): String {
+    fun getSysMessage(key: MessageKey<*, *>, vararg args: Any): String {
+        if (!expectedType.isInstance(key)) {
+            throw IllegalArgumentException("The provided key is not of the expected type: ${expectedType.simpleName}")
+        }
+
+        val castedKey = key as MessageKey<P, T>
+
         val lang = Locale.getDefault().language
-        val message = messages[lang]?.get(key)
+        val message = messages[lang]?.get(castedKey)
         val text = message?.let { String.format(it, *args) } ?: return key.rc()
         return text
     }
