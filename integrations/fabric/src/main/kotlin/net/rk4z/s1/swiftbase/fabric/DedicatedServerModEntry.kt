@@ -15,7 +15,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
-@Suppress("DuplicatedCode", "UNCHECKED_CAST", "unused")
+@Suppress("DuplicatedCode", "UNCHECKED_CAST", "unused", "MemberVisibilityCanBePrivate")
 open class DedicatedServerModEntry(
     @NotNull
     val id: String,
@@ -159,9 +159,9 @@ open class DedicatedServerModEntry(
                 if (Files.exists(langFile.toPath())) {
                     Files.newBufferedReader(langFile.toPath(), StandardCharsets.UTF_8).use { reader ->
                         val data: Map<String, Any> = core.yaml.load(reader)
-                        val messageMap: MutableMap<MessageKey<*, *>, String> = mutableMapOf()
-                        languageManager.processYamlAndMapMessageKeys(data, messageMap)
-                        languageManager.messages[lang] = messageMap
+                        val messageMap: MutableMap<MessageKey<FabricPlayerAdapter, Text>, String> = mutableMapOf()
+                        languageManager.processYamlAndMapMessageKeys(data, messageMap, FabricMessageKey::class)
+                        languageManager.messages[lang] = messageMap as MutableMap<FabricMessageKey, String>
                     }
                 } else {
                     log.warn("Language file for '$lang' not found.")
