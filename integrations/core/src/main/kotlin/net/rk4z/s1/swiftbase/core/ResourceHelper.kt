@@ -1,6 +1,5 @@
 package net.rk4z.s1.swiftbase.core
 
-import net.rk4z.s1.swiftbase.core.Core.Companion.logger
 import org.jetbrains.annotations.NotNull
 import java.io.*
 
@@ -16,35 +15,38 @@ class ResourceHelper internal constructor(
 ) {
 
     /**
-     * Saves a specified resource from the JAR to the `dataFolder` or a specified output directory.
-     * Creates any necessary directories if they do not already exist.
+     * Saves a resource from the plugin JAR to a specified output path or the default data folder.
      *
-     * @param resourcePath The path of the resource within the JAR file.
-     * @param replace Specifies whether to replace the file if it already exists.
-     * @param outPath Optional output path where the file should be saved. If null, defaults to `dataFolder`.
-     * @throws IllegalArgumentException If the resource path is empty or the resource is not found in the JAR.
+     * @param resourcePath The path to the resource within the JAR file. Must not be empty or null.
+     * @param outPath The optional directory where the resource should be saved.
+     *                If not specified, the `dataFolder` is used by default.
+     * @param replace Whether to overwrite the file if it already exists at the target location.
+     *
+     * @throws IllegalArgumentException If `resourcePath` is empty or if the resource could not be found in the JAR.
+     * @throws IOException If there is an error during the file save process.
+     *
+     * This function will create any necessary directories within `outPath` or `dataFolder` if they do not already exist.
+     * If `replace` is false and the target file already exists, a warning is logged, and the file is not overwritten.
      */
-    fun saveResource(@NotNull resourcePath: String, replace: Boolean, outPath: String? = null) {
+    fun saveResource(
+        @NotNull resourcePath: String,
+        replace: Boolean,
+        outPath: File? = null,
+    ) {
         if (resourcePath.isEmpty()) {
             throw IllegalArgumentException("ResourcePath cannot be null or empty")
         }
 
-        logger.info("Finding resource $resourcePath")
-
         val sanitizedPath = resourcePath.replace('\\', '/')
         val inputStream = getResource(sanitizedPath)
-            ?: throw IllegalArgumentException("The embedded resource '$sanitizedPath' cannot be found in the plugin JAR.")
+            ?: throw IllegalArgumentException("The embedded resource '$sanitizedPath' cannot be found in the JAR.")
 
-        val outputFolder = outPath?.let { File(it) } ?: dataFolder
-        val outFile = if (outPath != null) {
-            File(outputFolder, File(sanitizedPath).name)
-        } else {
-            File(outputFolder, sanitizedPath)
-        }
+        val destinationDir = outPath ?: dataFolder
+        val fileName = sanitizedPath.substringAfterLast('/')
+        val outFile = File(destinationDir, fileName)
 
-        val outDir = outFile.parentFile
-        if (!outDir.exists()) {
-            outDir.mkdirs()
+        if (!destinationDir.exists()) {
+            destinationDir.mkdirs()
         }
 
         try {
@@ -54,15 +56,14 @@ class ResourceHelper internal constructor(
                         input.copyTo(out)
                     }
                 }
-                logger.info("Saved resource $sanitizedPath to $outFile")
+                Logger.info("Saved resource $sanitizedPath to $outFile")
             } else {
-                logger.warn("Could not save $outFile because it already exists.")
+                Logger.warn("Could not save $outFile because it already exists.")
             }
         } catch (ex: IOException) {
-            logger.warn("Could not save $outFile: ${ex.message}")
+            Logger.warn("Could not save $outFile: ${ex.message}")
         }
     }
-
 
     /**
      * Retrieves an embedded resource from the JAR as an [InputStream].
@@ -79,7 +80,7 @@ class ResourceHelper internal constructor(
         return try {
             val url = this::class.java.classLoader.getResource(filename) ?: return null
             url.openConnection().apply { useCaches = false }.getInputStream()
-        } catch (ex: IOException) {
+        } catch (_: IOException) {
             null
         }
     }

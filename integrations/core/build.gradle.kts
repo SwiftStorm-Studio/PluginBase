@@ -33,6 +33,8 @@ publishing {
                         id.set("lars")
                         name.set("Lars")
                         email.set("main@rk4z.net")
+                        organization.set("SwiftStorm Studio")
+                        roles.set(listOf("Owner", "Developer"))
                     }
                 }
                 scm {
