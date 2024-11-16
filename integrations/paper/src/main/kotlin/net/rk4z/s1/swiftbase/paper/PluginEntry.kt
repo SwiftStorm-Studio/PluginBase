@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.rk4z.s1.swiftbase.bstats.Metrics
 import net.rk4z.s1.swiftbase.core.Core
+import net.rk4z.s1.swiftbase.core.LanguageManager
 import net.rk4z.s1.swiftbase.core.LanguageManagerInfo
 import org.bukkit.NamespacedKey
 import org.bukkit.plugin.java.JavaPlugin
@@ -47,6 +48,10 @@ open class PluginEntry(
 
         fun <I : PluginEntry> get() : I? {
             return instance as? I
+        }
+
+        fun getLanguageManager(): LanguageManager<PaperPlayer, TextComponent> {
+            return LanguageManager.get()
         }
 
         val paperTextComponentFactory = { text: String -> Component.text(text) }
