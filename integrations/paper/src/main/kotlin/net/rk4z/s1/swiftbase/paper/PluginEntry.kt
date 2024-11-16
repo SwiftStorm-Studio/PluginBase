@@ -114,6 +114,10 @@ open class PluginEntry(
         return core.lc<T>(key)
     }
 
+    fun loadLanguageFileFromResourcePacks() {
+        throw NotImplementedError("This method is not implemented for Paper plugins yet")
+    }
+
     open fun onLoadPre() {}
     open fun onLoadPost() {}
     open fun onEnablePre() {}

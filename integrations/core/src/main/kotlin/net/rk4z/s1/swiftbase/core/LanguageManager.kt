@@ -134,7 +134,6 @@ class LanguageManager<P : IPlayer<C>, C> internal constructor(
         }
     }
 
-
     private fun processYamlData(
         prefix: String,
         data: Map<String, Any>,
@@ -155,6 +154,34 @@ class LanguageManager<P : IPlayer<C>, C> internal constructor(
                         messageMap[messageKey] = value
                     } else {
                         Logger.logIfDebug("No message key found for YAML path: $currentPrefix", LogLevel.WARN)
+                    }
+                }
+                is List<*> -> {
+                    Logger.logIfDebug("Processing list at path: $currentPrefix with ${value.size} items")
+
+                    // リストの要素を順に処理
+                    value.forEachIndexed { index, element ->
+                        val listPrefix = "$currentPrefix.item_$index"
+
+                        when (element) {
+                            is String -> {
+                                // ITEM_0, ITEM_1... と対応する MessageKey を取得
+                                val messageKey = messageKeyMap[listPrefix]
+                                if (messageKey != null) {
+                                    Logger.logIfDebug("Mapping list item: $listPrefix -> $element")
+                                    messageMap[messageKey] = element
+                                } else {
+                                    Logger.logIfDebug("No message key found for list item path: $listPrefix", LogLevel.WARN)
+                                }
+                            }
+                            is Map<*, *> -> {
+                                Logger.logIfDebug("Encountered nested map in list at path: $listPrefix; diving deeper")
+                                processYamlData(listPrefix, element as Map<String, Any>, messageKeyMap, messageMap)
+                            }
+                            else -> {
+                                Logger.logIfDebug("Unexpected value type in list at path $listPrefix: ${element?.let { it::class.simpleName } ?: "null"}")
+                            }
+                        }
                     }
                 }
                 is Map<*, *> -> {
