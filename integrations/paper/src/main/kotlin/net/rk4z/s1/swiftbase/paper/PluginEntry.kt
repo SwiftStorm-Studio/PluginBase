@@ -20,7 +20,7 @@ open class PluginEntry(
     val isDebug: Boolean = false,
 
     val configFile: String? = null,
-    val configResourceRoot: String = "assets/config",
+    val configResourceRoot: String = "assets/${id}/config",
 
     val languageManagerInfo: LanguageManagerInfo<PaperPlayer, TextComponent>? = LanguageManagerInfo<PaperPlayer, TextComponent>(
         textComponentFactory = paperTextComponentFactory,
@@ -28,7 +28,7 @@ open class PluginEntry(
     ),
     val availableLang: List<String>? = null,
     val langDir: String? = null,
-    val langResourceRoot: String = "assets/lang",
+    val langResourceRoot: String = "assets/${id}/lang",
 
     val logger: Logger,
 
@@ -52,17 +52,15 @@ open class PluginEntry(
     }
 
     override fun onLoad() {
-        val crrf = formatResourceRoot(configResourceRoot, id)
-        val lrrf = formatResourceRoot(langResourceRoot, id)
         Core.initialize<PaperPlayer, TextComponent>(
             packageName,
             isDebug,
             dataFolder,
             configFile,
-            crrf,
+            configResourceRoot,
             availableLang,
             langDir,
-            lrrf,
+            langResourceRoot,
             S1Executor(this),
             logger,
             modrinthID,
@@ -107,39 +105,6 @@ open class PluginEntry(
         CB.executor.shutdown()
 
         onDisablePost()
-    }
-
-    /**
-     * Formats the given resource root path by ensuring the provided `id` is inserted
-     * as the second segment of the path, regardless of its original structure.
-     *
-     * The first segment of the path (before the first `/`) remains unchanged, and the `id`
-     * is inserted directly after it.
-     *
-     * Examples:
-     * ```
-     * formatResourceRoot("assets/config", "myID") -> "assets/myID/config"
-     * formatResourceRoot("example/path", "myID") -> "example/myID/path"
-     * formatResourceRoot("singleSegment", "myID") -> "singleSegment/myID"
-     * ```
-     *
-     * @param configResourceRoot The original resource root path to be formatted.
-     * @param id The identifier to be inserted into the path.
-     * @return The formatted resource root path with the `id` inserted as the second segment.
-     */
-    fun formatResourceRoot(configResourceRoot: String, id: String): String {
-        // Split the path into segments using "/"
-        val parts = configResourceRoot.split("/").filter { it.isNotEmpty() }
-
-        // If there are no segments, return just the id
-        if (parts.isEmpty()) return id
-
-        // Insert id after the first segment
-        val result = mutableListOf(parts[0], id)
-        if (parts.size > 1) result.addAll(parts.subList(1, parts.size))
-
-        // Join the modified list back into a string
-        return result.joinToString("/")
     }
 
     // This is a wrapper for the core's lc method
