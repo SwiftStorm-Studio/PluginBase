@@ -14,7 +14,7 @@ class LanguageManager<P : IPlayer<C>, C> internal constructor(
     val expectedMKType: KClass<out MessageKey<P, C>>
 ) {
     companion object {
-        internal lateinit var instance: LanguageManager<*, *>
+        lateinit var instance: LanguageManager<*, *>
 
         @JvmStatic
         fun <P : IPlayer<C>, C> get(): LanguageManager<P, C> {

@@ -50,10 +50,6 @@ open class PluginEntry(
             return instance as? I
         }
 
-        fun getLanguageManager(): LanguageManager<PaperPlayer, TextComponent> {
-            return LanguageManager.get()
-        }
-
         val paperTextComponentFactory = { text: String -> Component.text(text) }
     }
 

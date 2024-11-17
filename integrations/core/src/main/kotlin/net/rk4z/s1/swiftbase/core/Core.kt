@@ -55,7 +55,7 @@ class Core internal constructor(
          *
          * If you initialize Core and then try to initialize LanguageManager from SBHelper, an error will occur (because LanguageManager is a singleton).
          */
-        internal lateinit var languageManager: LanguageManager<*, *>
+        lateinit var languageManager: LanguageManager<*, *>
 
         lateinit var helper: ResourceHelper
 
