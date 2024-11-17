@@ -10,9 +10,22 @@ import java.io.*
  *
  * @property dataFolder The root directory where resources will be saved.
  */
-class ResourceHelper internal constructor(
+class ResourceHelper private constructor(
     private val dataFolder: File
 ) {
+    companion object {
+        private var instance: ResourceHelper = ResourceHelper(File(""))
+
+        fun create(dataFolder: File): ResourceHelper {
+            instance = ResourceHelper(dataFolder)
+            return instance
+        }
+
+        @Deprecated("If you are not API developer, You must not use this function.")
+        fun getUnsafe(): ResourceHelper {
+            return instance
+        }
+    }
 
     /**
      * Saves a resource from the plugin JAR to a specified output path or the default data folder.

@@ -3,9 +3,11 @@ package net.rk4z.s1.swiftbase.paper
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.rk4z.s1.swiftbase.bstats.Metrics
+import net.rk4z.s1.swiftbase.core.CB
 import net.rk4z.s1.swiftbase.core.Core
 import net.rk4z.s1.swiftbase.core.LanguageManager
 import net.rk4z.s1.swiftbase.core.LanguageManagerInfo
+import net.rk4z.s1.swiftbase.core.dummyCore
 import org.bukkit.NamespacedKey
 import org.bukkit.plugin.java.JavaPlugin
 import org.jetbrains.annotations.NotNull
@@ -37,10 +39,8 @@ open class PluginEntry(
     val serviceId: Int? = null,
 ) : JavaPlugin() {
     companion object {
-        lateinit var core: Core
-
-        private lateinit var metrics: Metrics
-        private lateinit var instance: PluginEntry
+        lateinit var metrics: Metrics
+        lateinit var instance: PluginEntry
 
         @JvmStatic
         lateinit var key: NamespacedKey
@@ -54,7 +54,7 @@ open class PluginEntry(
     }
 
     override fun onLoad() {
-        core = Core.initialize<PaperPlayer, TextComponent>(
+        Core.initialize<PaperPlayer, TextComponent>(
             packageName,
             isDebug,
             dataFolder,
@@ -74,12 +74,12 @@ open class PluginEntry(
 
         onLoadPre()
 
-        core.initializeDirectories()
+        CB.initializeDirectories()
         if (languageManagerInfo != null) {
         if (!isDebug) {
-            core.updateLanguageFilesIfNeeded()
+            CB.updateLanguageFilesIfNeeded()
         }
-            core.loadLanguageFiles()
+            CB.loadLanguageFiles()
         }
 
         onLoadPost()
@@ -95,7 +95,7 @@ open class PluginEntry(
         }
 
         if (enableUpdateChecker) {
-            core.checkUpdate()
+            CB.checkUpdate()
         }
 
         onEnablePost()
@@ -104,7 +104,7 @@ open class PluginEntry(
     override fun onDisable() {
         onDisablePre()
 
-        core.executor.shutdown()
+        CB.executor.shutdown()
 
         onDisablePost()
     }
@@ -112,7 +112,7 @@ open class PluginEntry(
     // This is a wrapper for the core's lc method
     // (I just don't want to write `core.lc<T>(key)` every time)
     inline fun <reified T> lc(key: String): T? {
-        return core.lc<T>(key)
+        return CB.lc<T>(key)
     }
 
     fun loadLanguageFileFromResourcePacks() {

@@ -1,7 +1,25 @@
 package net.rk4z.s1.swiftbase.core
 
+import net.rk4z.s1.swiftbase.core.dummy.DummyExecutor
 import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.io.File
+
+val dummyCore = Core(
+    packageName = "com.example.dummy",
+    isDebug = true,
+    dataFolder = File("dummyData"),
+    configFile = null,
+    configResourceRoot = "/dummy/config",
+    availableLang = listOf("en", "ja"),
+    langDir = File("dummyLang"),
+    langResourceRoot = "/dummy/lang",
+    executor = DummyExecutor(),
+    logger = LoggerFactory.getLogger("DummyCore"),
+    modrinthID = "dummy",
+    version = "1.0.0"
+)
+
 
 fun String.toBooleanOrNull(): Boolean? {
     return when (this.trim().lowercase()) {

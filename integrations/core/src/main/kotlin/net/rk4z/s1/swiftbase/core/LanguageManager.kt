@@ -1,5 +1,6 @@
 package net.rk4z.s1.swiftbase.core
 
+import net.rk4z.s1.swiftbase.core.dummy.DummyMessageKey
 import org.reflections.Reflections
 import org.reflections.scanners.Scanners
 import org.reflections.util.ClasspathHelper
@@ -9,27 +10,49 @@ import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 
 @Suppress("UNCHECKED_CAST")
-class LanguageManager<P : IPlayer<C>, C> internal constructor(
+open class LanguageManager<P : IPlayer<C>, C> private constructor(
     val textComponentFactory: (String) -> C,
-    val expectedMKType: KClass<out MessageKey<P, C>>
+    val expectedMKType: KClass<out MessageKey<*, *>>
 ) {
     companion object {
-        lateinit var instance: LanguageManager<*, *>
+        var instance: LanguageManager<*, *> = object : LanguageManager<IPlayer<Nothing>, Nothing>(
+            // ダミーファクトリー。このキャストは必ず失敗する。
+            { it as Nothing },
+            DummyMessageKey::class
+        ) {}
+
+        /**
+         * Create a new LanguageManager instance.
+         * If you're using [Core], the language manager will automatically be created.
+         *
+         * @param textComponentFactory The factory to create a new text component.
+         * @param expectedType The expected type of the message key.
+         * @return The created language manager.
+         * @throws IllegalStateException If the language manager is already created by [Core].
+         */
+        fun <P : IPlayer<C>, C> initialize(
+            textComponentFactory: (String) -> C,
+            expectedType: KClass<out MessageKey<P, C>>
+        ): LanguageManager<P, C> {
+            if (Core.isInitialized()) {
+                throw IllegalStateException("LanguageManager already created by Core.")
+            }
+
+            val languageManager: LanguageManager<P, C> = LanguageManager(textComponentFactory, expectedType)
+
+            instance = languageManager
+
+            return languageManager
+        }
 
         @JvmStatic
         fun <P : IPlayer<C>, C> get(): LanguageManager<P, C> {
             return instance as LanguageManager<P, C>
         }
 
-        @Deprecated("If you are not API developer, you have to use [get] function instead of this function.")
-        @JvmStatic
-        fun getUnsafe(): LanguageManager<*, *> {
-            return instance
-        }
-
         @JvmStatic
         fun isInitialized(): Boolean {
-            return this::instance.isInitialized
+            return instance.expectedMKType != DummyMessageKey::class
         }
     }
 
@@ -103,14 +126,16 @@ class LanguageManager<P : IPlayer<C>, C> internal constructor(
         currentPath: String = "",
         messageKeyMap: MutableMap<String, MessageKey<P, C>>
     ) {
-        val className = if (clazz == expectedMKType) "" else clazz.simpleName?.lowercase() ?: return
+        val castedExpectedMKType = expectedMKType as KClass<out MessageKey<P, C>>
+
+        val className = if (clazz == castedExpectedMKType) "" else clazz.simpleName?.lowercase() ?: return
         val fullPath = if (currentPath.isEmpty()) className else "$currentPath.$className"
 
         Logger.logIfDebug("Mapping keys for class: ${clazz.simpleName}, fullPath: $fullPath")
 
-        if (clazz == expectedMKType || clazz.isSubclassOf(expectedMKType)) {
+        if (clazz == castedExpectedMKType || clazz.isSubclassOf(castedExpectedMKType)) {
             clazz.nestedClasses.forEach { nestedClass ->
-                if (nestedClass.isSubclassOf(expectedMKType)) {
+                if (nestedClass.isSubclassOf(castedExpectedMKType)) {
                     Logger.logIfDebug("Found nested class of expected type: ${nestedClass.simpleName}")
                     mapMessageKeys(nestedClass as KClass<out MessageKey<*, *>>, fullPath, messageKeyMap)
                 }
@@ -119,7 +144,7 @@ class LanguageManager<P : IPlayer<C>, C> internal constructor(
         }
 
         val objectInstance = clazz.objectInstance
-        if (expectedMKType.isInstance(objectInstance)) {
+        if (castedExpectedMKType.isInstance(objectInstance)) {
             Logger.logIfDebug("Adding object instance to messageKeyMap: $fullPath -> ${clazz.simpleName}")
             messageKeyMap[fullPath] = objectInstance as MessageKey<P, C>
         } else {
@@ -127,7 +152,7 @@ class LanguageManager<P : IPlayer<C>, C> internal constructor(
         }
 
         clazz.nestedClasses.forEach { nestedClass ->
-            if (nestedClass.isSubclassOf(expectedMKType)) {
+            if (nestedClass.isSubclassOf(castedExpectedMKType)) {
                 Logger.logIfDebug("Exploring nested class: ${nestedClass.simpleName} under $fullPath")
                 mapMessageKeys(nestedClass as KClass<out MessageKey<*, *>>, fullPath, messageKeyMap)
             }

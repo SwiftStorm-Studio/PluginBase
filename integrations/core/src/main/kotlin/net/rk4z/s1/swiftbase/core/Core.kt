@@ -48,18 +48,9 @@ class Core internal constructor(
         /**
          * Core is a singleton and can't be initialized twice
          */
-        internal lateinit var instance: Core
+        internal var instance: Core = dummyCore
 
-        /**
-         * When using Core, an instance of LanguageManager is automatically created.
-         *
-         * If you initialize Core and then try to initialize LanguageManager from SBHelper, an error will occur (because LanguageManager is a singleton).
-         *
-         * There is a “languageManage” variable in both Core/LanguageManager; if you aren't using Core, be careful where you import it!
-         */
-        lateinit var languageManager: LanguageManager<*, *>
-
-        lateinit var helper: ResourceHelper
+        var helper: ResourceHelper = ResourceHelper.getUnsafe()
 
         /**
          * Logger will be replaced by a user-specific one after Core initialization
@@ -105,7 +96,7 @@ class Core internal constructor(
             version: String = "0",
             languageManagerInfo: LanguageManagerInfo<P, C>? = null,
         ): Core {
-            if (::instance.isInitialized) {
+            if (isInitialized()) {
                 throw IllegalStateException("Core has already been initialized.")
             }
 
@@ -114,12 +105,11 @@ class Core internal constructor(
             }
 
             languageManagerInfo?.run {
-                languageManager = SBHelper.crateLanguageManager(textComponentFactory, expectedType)
-                LanguageManager.instance = this@Companion.languageManager
+                LanguageManager.initialize(textComponentFactory, expectedType)
             }
 
             Companion.logger = logger
-            helper = ResourceHelper(dataFolder)
+            helper = ResourceHelper.create(dataFolder)
 
             val cf = configFile?.let { File(dataFolder, it) }
             val ld = langDir?.let { File(dataFolder, it) }
@@ -149,7 +139,7 @@ class Core internal constructor(
          */
         @JvmStatic
         fun getInstance(): Core {
-            if (!::instance.isInitialized) {
+            if (!isInitialized()) {
                 throw IllegalStateException("Core has not been initialized.")
             }
 
@@ -157,8 +147,8 @@ class Core internal constructor(
         }
 
         @JvmStatic
-        fun isLanguageManagerInitialized(): Boolean {
-            return ::languageManager.isInitialized
+        fun isInitialized(): Boolean {
+            return instance::class != dummyCore::class
         }
     }
 
@@ -299,7 +289,7 @@ class Core internal constructor(
                 if (Files.exists(langFile.toPath())) {
                     Files.newBufferedReader(langFile.toPath(), StandardCharsets.UTF_8).use { reader ->
                         val data: Map<String, Any> = yaml.load(reader)
-                        languageManager.processYamlAndMapMessageKeys(data, lang)
+                        LMB.processYamlAndMapMessageKeys(data, lang)
                     }
                 } else {
                     Logger.warn("Language file for '$lang' not found.")
@@ -341,8 +331,8 @@ class Core internal constructor(
     }
 
     private fun handleUpdateResponse(connection: HttpURLConnection) {
-        val response = executor.submit { connection.inputStream.bufferedReader().readText() }.get()
-        val (latestVersion, versionCount, newerVersionCount) = extractVersionInfo(response)
+        val response = executor.submit { connection.inputStream.bufferedReader().readText() }?.get()
+        val (latestVersion, versionCount, newerVersionCount) = extractVersionInfo(response!!)
         onAllVersionsRetrieved(versionCount)
         if (isVersionNewer(latestVersion, version)) {
             onNewVersionFound(latestVersion, newerVersionCount)

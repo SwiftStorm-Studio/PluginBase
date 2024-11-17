@@ -15,7 +15,7 @@ interface S0Executor {
      * @param task The Callable task to be executed.
      * @return A Future representing the result of the task.
      */
-    fun <T> submit(task: Callable<T>): Future<T>
+    fun <T> submit(task: Callable<T>): Future<T>?
 
     /**
      * Submits a Callable task for asynchronous execution on a separate thread.
@@ -23,7 +23,7 @@ interface S0Executor {
      * @param task The Callable task to be executed.
      * @return A Future representing the pending result of the task.
      */
-    fun <T> submitAsync(task: Callable<T>): Future<T>
+    fun <T> submitAsync(task: Callable<T>): Future<T>?
 
     /**
      * Executes a Runnable task synchronously on the main thread.
@@ -93,7 +93,7 @@ interface S0Executor {
      * @param delay The delay (in milliseconds) before the task is executed.
      * @return A Future representing the pending result of the task.
      */
-    fun <T> submitWithDelay(task: Callable<T>, delay: Long): Future<T>
+    fun <T> submitWithDelay(task: Callable<T>, delay: Long): Future<T>?
 
     /**
      * Submits a collection of Callable tasks for concurrent asynchronous execution.
@@ -103,7 +103,7 @@ interface S0Executor {
      * @return A list of Future objects representing the results of the tasks.
      * @throws InterruptedException If the current thread is interrupted while waiting.
      */
-    fun <T> invokeAll(tasks: Collection<Callable<T>>): List<Future<T>>
+    fun <T> invokeAll(tasks: Collection<Callable<T>>): List<Future<T>>?
 
     /**
      * Waits for all running tasks to complete or until the specified timeout occurs.
@@ -113,7 +113,7 @@ interface S0Executor {
      * @return `true` if all tasks completed before the timeout, otherwise `false`.
      * @throws InterruptedException If the current thread is interrupted while waiting.
      */
-    fun awaitTermination(timeout: Long, timeUnit: TimeUnit): Boolean
+    fun awaitTermination(timeout: Long, timeUnit: TimeUnit): Boolean?
 
     /**
      * Cancels all currently running or scheduled tasks.
@@ -127,7 +127,7 @@ interface S0Executor {
      *
      * @return `true` if the Executor has been shut down, otherwise `false`.
      */
-    fun isShutdown(): Boolean
+    fun isShutdown(): Boolean?
 
     /**
      * Initiates an orderly shutdown of the Executor. This cancels all pending tasks
