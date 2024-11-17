@@ -54,6 +54,8 @@ class Core internal constructor(
          * When using Core, an instance of LanguageManager is automatically created.
          *
          * If you initialize Core and then try to initialize LanguageManager from SBHelper, an error will occur (because LanguageManager is a singleton).
+         *
+         * There is a “languageManage” variable in both Core/LanguageManager; if you aren't using Core, be careful where you import it!
          */
         lateinit var languageManager: LanguageManager<*, *>
 
