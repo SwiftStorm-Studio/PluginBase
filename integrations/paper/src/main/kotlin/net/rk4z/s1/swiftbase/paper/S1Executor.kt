@@ -7,102 +7,59 @@ import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.ConcurrentLinkedQueue
 
-@Suppress("DuplicatedCode")
 class S1Executor internal constructor(private val plugin: JavaPlugin) : S0Executor {
     private val isShutdown = AtomicBoolean(false)
-    private val runningTasks = ConcurrentLinkedQueue<Future<*>>() // スレッドセーフなリストに変更
+    private val runningTasks = ConcurrentLinkedQueue<Future<*>>()
 
     override fun <T> submit(task: Callable<T>): Future<T> {
         checkShutdown()
-        val future = Bukkit.getScheduler().callSyncMethod(plugin, task) // 既存のFuture
-        val completableFuture = CompletableFuture<T>() // CompletableFutureを作成
-
-        // Futureの結果をポーリングしてCompletableFutureに渡す
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, Runnable {
-            try {
-                val result = future.get() // Futureの結果を取得
-                completableFuture.complete(result) // CompletableFutureを完了
-            } catch (e: Exception) {
-                completableFuture.completeExceptionally(e) // 例外発生時
-            } finally {
-                runningTasks.remove(completableFuture) // タスク終了時にリストから削除
-            }
-        })
-
-        runningTasks.add(completableFuture)
-        return completableFuture
+        val future = Bukkit.getScheduler().callSyncMethod(plugin, task) // 同期タスク
+        runningTasks.add(future)
+        return future
     }
-
 
     override fun <T> submitAsync(task: Callable<T>): Future<T> {
         checkShutdown()
-
-        // カスタムExecutorを使用
-        val executor = BukkitSchedulerExecutor(plugin, Bukkit.getScheduler(), async = true)
         val future = CompletableFuture.supplyAsync({
             task.call()
-        }, executor)
-
+        }, BukkitSchedulerExecutor(plugin, Bukkit.getScheduler(), async = true))
         runningTasks.add(future)
-        future.whenComplete { _, _ -> runningTasks.remove(future) } // タスク終了時に削除
+        future.whenComplete { _, _ -> runningTasks.remove(future) }
         return future
     }
 
     override fun execute(task: Runnable) {
         checkShutdown()
-        val future = CompletableFuture.runAsync {
-            Bukkit.getScheduler().runTask(plugin, task)
-        }
-        runningTasks.add(future)
-        future.whenComplete { _, _ -> runningTasks.remove(future) } // タスク終了時に削除
+        Bukkit.getScheduler().runTask(plugin, task) // 同期タスク
     }
 
     override fun executeAsync(task: Runnable) {
         checkShutdown()
-        val future = CompletableFuture.runAsync {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, task)
-        }
-        runningTasks.add(future)
-        future.whenComplete { _, _ -> runningTasks.remove(future) } // タスク終了時に削除
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, task) // 非同期タスク
     }
 
     override fun executeTimer(task: Runnable, delay: Long, period: Long) {
         checkShutdown()
-        val future = CompletableFuture.runAsync {
-            Bukkit.getScheduler().runTaskTimer(plugin, task, delay, period)
-        }
-        runningTasks.add(future)
-        future.whenComplete { _, _ -> runningTasks.remove(future) } // タスク終了時に削除
+        val bukkitTask = Bukkit.getScheduler().runTaskTimer(plugin, task, delay, period)
+        runningTasks.add(BukkitTaskFuture(bukkitTask))
     }
 
     override fun executeAsyncTimer(task: Runnable, delay: Long, period: Long) {
         checkShutdown()
-        val future = CompletableFuture.runAsync {
-            Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, delay, period)
-        }
-        runningTasks.add(future)
-        future.whenComplete { _, _ -> runningTasks.remove(future) } // タスク終了時に削除
+        val bukkitTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, delay, period)
+        runningTasks.add(BukkitTaskFuture(bukkitTask))
     }
 
     override fun schedule(task: Runnable, delay: Long) {
         checkShutdown()
-        val future = CompletableFuture.runAsync {
-            Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, task, delay)
-        }
-        runningTasks.add(future)
-        future.whenComplete { _, _ -> runningTasks.remove(future) } // タスク終了時に削除
+        Bukkit.getScheduler().runTaskLater(plugin, task, delay) // 遅延タスク
     }
 
     override fun scheduleAtFixedRate(task: Runnable, delay: Long, period: Long) {
         checkShutdown()
-        val future = CompletableFuture.runAsync {
-            Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, delay, period)
-        }
-        runningTasks.add(future)
-        future.whenComplete { _, _ -> runningTasks.remove(future) } // タスク終了時に削除
+        executeAsyncTimer(task, delay, period) // 定期実行
     }
 
-    @Throws(TimeoutException::class, InterruptedException::class, ExecutionException::class)
     override fun <T> submitWithTimeout(task: Callable<T>, timeout: Long, timeUnit: TimeUnit): T? {
         checkShutdown()
         val future = Bukkit.getScheduler().callSyncMethod(plugin, task)
@@ -113,51 +70,39 @@ class S1Executor internal constructor(private val plugin: JavaPlugin) : S0Execut
             future.cancel(true)
             throw e
         } finally {
-            runningTasks.remove(future) // 終了時に削除
+            runningTasks.remove(future)
         }
     }
 
     override fun <T> submitWithDelay(task: Callable<T>, delay: Long): Future<T> {
         checkShutdown()
-
         val future = CompletableFuture<T>()
-
-        // BukkitSchedulerExecutorを使用して非同期タスクを実行
-        val executor = BukkitSchedulerExecutor(plugin, Bukkit.getScheduler(), async = true)
-
-        // 指定した遅延時間後にタスクを実行
         Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, Runnable {
-            CompletableFuture.supplyAsync({
-                try {
-                    val result = task.call() // タスクを実行
-                    future.complete(result) // 結果をCompletableFutureに設定
-                } catch (e: Exception) {
-                    future.completeExceptionally(e) // エラーの場合
-                }
-            }, executor).whenComplete { _, _ ->
-                runningTasks.remove(future) // タスク終了時に削除
+            try {
+                val result = task.call()
+                future.complete(result)
+            } catch (e: Exception) {
+                future.completeExceptionally(e)
+            } finally {
+                runningTasks.remove(future)
             }
         }, delay)
-
         runningTasks.add(future)
         return future
     }
 
-    @Throws(InterruptedException::class)
     override fun <T> invokeAll(tasks: Collection<Callable<T>>): List<Future<T>> {
         checkShutdown()
-        val futures = tasks.map { task -> submit(task) }
-        return futures
+        return tasks.map { submit(it) }
     }
 
-    @Throws(InterruptedException::class)
     override fun awaitTermination(timeout: Long, timeUnit: TimeUnit): Boolean {
         val endTime = System.nanoTime() + timeUnit.toNanos(timeout)
         while (System.nanoTime() < endTime) {
             if (runningTasks.all { it.isDone || it.isCancelled }) {
                 return true
             }
-            Thread.sleep(100) // Polling delay
+            Thread.sleep(100)
         }
         return false
     }
@@ -173,9 +118,7 @@ class S1Executor internal constructor(private val plugin: JavaPlugin) : S0Execut
 
     override fun shutdown() {
         if (isShutdown.compareAndSet(false, true)) {
-            runningTasks.forEach { it.cancel(true) }
-            runningTasks.clear()
-            awaitTermination(10, TimeUnit.SECONDS) // Wait for all tasks to finish with a timeout
+            cancelAll(true)
         }
     }
 
@@ -183,5 +126,17 @@ class S1Executor internal constructor(private val plugin: JavaPlugin) : S0Execut
         if (isShutdown.get()) {
             throw RejectedExecutionException("Executor has been shut down")
         }
+    }
+
+    private class BukkitTaskFuture(private val task: org.bukkit.scheduler.BukkitTask) : Future<Void> {
+        override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
+            task.cancel()
+            return true
+        }
+
+        override fun isCancelled(): Boolean = task.isCancelled
+        override fun isDone(): Boolean = task.isCancelled
+        override fun get(): Void? = throw UnsupportedOperationException("Cannot wait for periodic task completion")
+        override fun get(timeout: Long, unit: TimeUnit): Void? = throw UnsupportedOperationException("Cannot wait for periodic task completion")
     }
 }
