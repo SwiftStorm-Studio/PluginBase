@@ -331,8 +331,11 @@ class Core internal constructor(
     }
 
     private fun handleUpdateResponse(connection: HttpURLConnection) {
-        val response = executor.submit { connection.inputStream.bufferedReader().readText() }?.get()
-        val (latestVersion, versionCount, newerVersionCount) = extractVersionInfo(response!!)
+        val response = executor.execute { connection.inputStream.bufferedReader().readText() } ?: run {
+            Logger.logIfDebug("Response is null.")
+            return
+        }
+        val (latestVersion, versionCount, newerVersionCount) = extractVersionInfo(response)
         onAllVersionsRetrieved(versionCount)
         if (isVersionNewer(latestVersion, version)) {
             onNewVersionFound(latestVersion, newerVersionCount)
