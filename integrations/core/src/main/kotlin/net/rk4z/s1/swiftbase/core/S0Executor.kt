@@ -24,4 +24,8 @@ interface S0Executor {
     fun executeAsyncTimer(task: Runnable, delay: Long, period: Long)
 
     fun <T> executeAsyncTimer(task: () -> T, delay: Long, period: Long): T
+
+    fun shutdownCheck()
+
+    fun shutdown()
 }

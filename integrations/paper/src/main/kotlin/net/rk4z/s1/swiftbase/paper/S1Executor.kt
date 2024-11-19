@@ -5,8 +5,13 @@ import org.bukkit.Bukkit
 import org.bukkit.plugin.Plugin
 import java.util.concurrent.CountDownLatch
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 class S1Executor(private val plugin: Plugin) : S0Executor {
+    private val isShutdown = AtomicBoolean(false)
+
     override fun <T> execute(task: () -> T): T {
+        shutdownCheck()
         val resultHolder = arrayOfNulls<Any>(1)
         val latch = CountDownLatch(1)
 
@@ -24,6 +29,7 @@ class S1Executor(private val plugin: Plugin) : S0Executor {
     }
 
     override fun <T> executeAsync(task: () -> T): T {
+        shutdownCheck()
         val resultHolder = arrayOfNulls<Any>(1)
         val latch = CountDownLatch(1)
 
@@ -41,18 +47,22 @@ class S1Executor(private val plugin: Plugin) : S0Executor {
     }
 
     override fun execute(task: Runnable) {
+        shutdownCheck()
         Bukkit.getScheduler().runTask(plugin, task)
     }
 
     override fun executeAsync(task: Runnable) {
+        shutdownCheck()
         Bukkit.getScheduler().runTaskAsynchronously(plugin, task)
     }
 
     override fun executeLater(task: Runnable, delay: Long) {
+        shutdownCheck()
         Bukkit.getScheduler().runTaskLater(plugin, task, delay)
     }
 
     override fun <T> executeLater(task: () -> T, delay: Long): T {
+        shutdownCheck()
         val resultHolder = arrayOfNulls<Any>(1)
         val latch = CountDownLatch(1)
 
@@ -70,10 +80,12 @@ class S1Executor(private val plugin: Plugin) : S0Executor {
     }
 
     override fun executeAsyncLater(task: Runnable, delay: Long) {
+        shutdownCheck()
         Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, task, delay)
     }
 
     override fun <T> executeAsyncLater(task: () -> T, delay: Long): T {
+        shutdownCheck()
         val resultHolder = arrayOfNulls<Any>(1)
         val latch = CountDownLatch(1)
 
@@ -91,44 +103,32 @@ class S1Executor(private val plugin: Plugin) : S0Executor {
     }
 
     override fun executeTimer(task: Runnable, delay: Long, period: Long) {
+        shutdownCheck()
         Bukkit.getScheduler().runTaskTimer(plugin, task, delay, period)
     }
 
     override fun <T> executeTimer(task: () -> T, delay: Long, period: Long): T {
-        val resultHolder = arrayOfNulls<Any>(1)
-        val latch = CountDownLatch(1)
-
-        Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
-            try {
-                resultHolder[0] = task()
-            } finally {
-                latch.countDown()
-            }
-        }, delay, period)
-
-        latch.await()
-        @Suppress("UNCHECKED_CAST")
-        return resultHolder[0] as T
+        shutdownCheck()
+        throw UnsupportedOperationException("Timer tasks with return values are not supported.")
     }
 
     override fun executeAsyncTimer(task: Runnable, delay: Long, period: Long) {
+        shutdownCheck()
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, delay, period)
     }
 
     override fun <T> executeAsyncTimer(task: () -> T, delay: Long, period: Long): T {
-        val resultHolder = arrayOfNulls<Any>(1)
-        val latch = CountDownLatch(1)
+        shutdownCheck()
+        throw UnsupportedOperationException("Timer tasks with return values are not supported.")
+    }
 
-        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, Runnable {
-            try {
-                resultHolder[0] = task()
-            } finally {
-                latch.countDown()
-            }
-        }, delay, period)
+    override fun shutdownCheck() {
+        if (isShutdown.get()) {
+            throw IllegalStateException("S1Executor is shut down and cannot accept new tasks.")
+        }
+    }
 
-        latch.await()
-        @Suppress("UNCHECKED_CAST")
-        return resultHolder[0] as T
+    override fun shutdown() {
+        isShutdown.set(true)
     }
 }
