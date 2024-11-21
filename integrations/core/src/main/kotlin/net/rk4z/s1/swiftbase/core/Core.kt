@@ -148,7 +148,7 @@ class Core internal constructor(
 
         @JvmStatic
         fun isInitialized(): Boolean {
-            return instance::class != dummyCore::class
+            return instance != dummyCore
         }
     }
 
@@ -176,8 +176,23 @@ class Core internal constructor(
         checkNotNull(configFile) { "Config file is not set but you try to load a value from it." }
 
         val config: Map<String, Any> = Files.newInputStream(configFile.toPath()).use { yaml.load(it) }
-        val value = config[key]
+
+        val value = resolveNestedKey(config, key)
         return parseValue(value)
+    }
+
+    fun resolveNestedKey(config: Map<String, Any>, key: String): Any? {
+        val keys = key.split(".") // "main.example" -> ["main", "example"]
+        var current: Any? = config
+
+        for (part in keys) {
+            if (current !is Map<*, *>) {
+                return null // 現在のノードがマップでない場合、探索を中止
+            }
+            current = current[part]
+        }
+
+        return current
     }
 
     inline fun <reified T> parseValue(value: Any?): T? {
