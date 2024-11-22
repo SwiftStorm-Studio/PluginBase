@@ -118,7 +118,8 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
             mapMessageKeys(clazz.kotlin, "", messageKeyMap)
         }
 
-        Logger.logIfDebug("Completed scanning for message keys; total keys mapped: ${messageKeyMap.size}")
+        Logger.logIfDebug("Completed scanning for message keys.")
+        Logger.logIfDebug("Generated MessageKey map: ${messageKeyMap.keys.joinToString(", ")}")
     }
 
     private fun mapMessageKeys(
@@ -166,10 +167,15 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
         messageMap: MutableMap<MessageKey<P, C>, String>
     ) {
         Logger.logIfDebug("Starting YAML data processing with prefix: '$prefix'")
+        Logger.logIfDebug("Available keys in MessageKey map: ${messageKeyMap.keys.joinToString(", ")}")
 
         for ((key, value) in data) {
             val currentPrefix = if (prefix.isEmpty()) key else "$prefix.$key"
             Logger.logIfDebug("Processing key: $key, currentPrefix: $currentPrefix")
+            if (key == "langVersion") {
+                Logger.logIfDebug("Skipping langVersion key")
+                continue
+            }
 
             when (value) {
                 is String -> {

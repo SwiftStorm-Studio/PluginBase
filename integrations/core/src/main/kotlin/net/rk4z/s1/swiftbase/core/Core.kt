@@ -91,7 +91,7 @@ class Core internal constructor(
             langDir: String? = null,
             langResourceRoot: String,
             executor: S0Executor,
-            logger: Logger = this.logger,
+            logger: Logger = LoggerFactory.getLogger("SwiftBase"),
             modrinthID: String = "",
             version: String = "0",
             languageManagerInfo: LanguageManagerInfo<P, C>? = null,
