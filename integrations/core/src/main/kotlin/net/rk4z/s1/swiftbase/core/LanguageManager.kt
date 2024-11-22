@@ -7,6 +7,7 @@ import org.reflections.util.ClasspathHelper
 import org.reflections.util.ConfigurationBuilder
 import java.util.Locale
 import kotlin.reflect.KClass
+import kotlin.reflect.full.createInstance
 import kotlin.reflect.full.isSubclassOf
 
 @Suppress("UNCHECKED_CAST")
@@ -15,11 +16,11 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
     val expectedMKType: KClass<out MessageKey<*, *>>
 ) {
     companion object {
-        var instance: LanguageManager<*, *> = object : LanguageManager<IPlayer<Nothing>, Nothing>(
+        var instance: LanguageManager<*, *> = LanguageManager<IPlayer<Nothing>, Nothing>(
             // ダミーファクトリー。このキャストは必ず失敗する。
             { it as Nothing },
             DummyMessageKey::class
-        ) {}
+        )
 
         /**
          * Create a new LanguageManager instance.
@@ -119,7 +120,7 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
         }
 
         Logger.logIfDebug("Completed scanning for message keys.")
-        Logger.logIfDebug("Generated MessageKey map: ${messageKeyMap.keys.joinToString(", ")}")
+        Logger.logIfDebug("Final MessageKey map contains: ${messageKeyMap.keys.joinToString(", ")}")
     }
 
     private fun mapMessageKeys(
@@ -129,33 +130,56 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
     ) {
         val castedExpectedMKType = expectedMKType as KClass<out MessageKey<P, C>>
 
-        val className = if (clazz == castedExpectedMKType) "" else clazz.simpleName?.lowercase() ?: return
-        val fullPath = if (currentPath.isEmpty()) className else "$currentPath.$className"
+        val className = clazz.simpleName ?: return
+        val fullPath = if (currentPath.isEmpty()) className.lowercase() else "$currentPath.${className.lowercase()}"
 
         Logger.logIfDebug("Mapping keys for class: ${clazz.simpleName}, fullPath: $fullPath")
 
-        if (clazz == castedExpectedMKType || clazz.isSubclassOf(castedExpectedMKType)) {
-            clazz.nestedClasses.forEach { nestedClass ->
-                if (nestedClass.isSubclassOf(castedExpectedMKType)) {
-                    Logger.logIfDebug("Found nested class of expected type: ${nestedClass.simpleName}")
-                    mapMessageKeys(nestedClass as KClass<out MessageKey<*, *>>, fullPath, messageKeyMap)
-                }
-            }
-            return
-        }
-
+        // 1. 該当クラスのインスタンスを取得または動的生成
         val objectInstance = clazz.objectInstance
-        if (castedExpectedMKType.isInstance(objectInstance)) {
-            Logger.logIfDebug("Adding object instance to messageKeyMap: $fullPath -> ${clazz.simpleName}")
+        if (objectInstance == null) {
+            try {
+                val newInstance = clazz.createInstance()
+                if (castedExpectedMKType.isInstance(newInstance)) {
+                    messageKeyMap[fullPath] = newInstance as MessageKey<P, C>
+                    Logger.logIfDebug("Dynamically instantiated and added: $fullPath")
+                } else {
+                    Logger.logIfDebug("Skipping dynamically created instance: $fullPath is not of expected type", LogLevel.WARN)
+                }
+            } catch (e: Exception) {
+                Logger.logIfDebug("Failed to instantiate class: ${clazz.simpleName}, reason: ${e.message}")
+            }
+        } else if (castedExpectedMKType.isInstance(objectInstance)) {
             messageKeyMap[fullPath] = objectInstance as MessageKey<P, C>
         } else {
             Logger.logIfDebug("Skipping ${clazz.simpleName}: not an instance of expected type", LogLevel.WARN)
         }
 
+        // 2. 中間パスも登録 (キーとしてアクセスできるようにする)
+        if (!messageKeyMap.containsKey(fullPath)) {
+            Logger.logIfDebug("Registering intermediate path: $fullPath")
+            if (clazz.isSubclassOf(castedExpectedMKType)) {
+                try {
+                    val intermediateInstance = clazz.createInstance()
+                    if (castedExpectedMKType.isInstance(intermediateInstance)) {
+                        messageKeyMap[fullPath] = intermediateInstance as MessageKey<P, C>
+                        Logger.logIfDebug("Intermediate instance added: $fullPath")
+                    } else {
+                        Logger.logIfDebug("Intermediate instance is not of expected type: $fullPath", LogLevel.WARN)
+                    }
+                } catch (e: Exception) {
+                    Logger.logIfDebug("Intermediate path registration failed for: $fullPath, reason: ${e.message}")
+                }
+            } else {
+                Logger.logIfDebug("Class $fullPath is not a subclass of expected type ${castedExpectedMKType.simpleName}, skipping registration")
+            }
+        }
+
+
+        // 3. 再帰的にネストされたクラスを探索
         clazz.nestedClasses.forEach { nestedClass ->
             if (nestedClass.isSubclassOf(castedExpectedMKType)) {
-                Logger.logIfDebug("Exploring nested class: ${nestedClass.simpleName} under $fullPath")
-                mapMessageKeys(nestedClass as KClass<out MessageKey<*, *>>, fullPath, messageKeyMap)
+                mapMessageKeys(nestedClass as KClass<out MessageKey<P, C>>, fullPath, messageKeyMap)
             }
         }
     }
