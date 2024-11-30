@@ -3,7 +3,6 @@ package net.rk4z.s1.swiftbase.fabric
 import net.minecraft.text.Text
 import net.rk4z.s1.swiftbase.core.CB
 import net.rk4z.s1.swiftbase.core.Core
-import net.rk4z.s1.swiftbase.fabric.ClientModEntry.Companion.instance
 import java.nio.file.Path
 
 object Common {

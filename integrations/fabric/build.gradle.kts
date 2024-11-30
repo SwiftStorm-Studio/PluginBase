@@ -6,13 +6,13 @@ plugins {
     id ("fabric-loom")
 }
 
-version = "1.1.3"
+version = "2.0.0"
 
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")
     mappings("net.fabricmc:yarn:1.21.3+build.2")
     modImplementation("net.fabricmc:fabric-loader:0.16.9")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:0.107.0+1.21.3")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:0.110.0+1.21.3")
     compileOnly(project(":integrations:swiftbase-core"))
 }
 
