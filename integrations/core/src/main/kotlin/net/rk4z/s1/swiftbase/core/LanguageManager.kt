@@ -75,7 +75,6 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
         return missingKeys
     }
 
-    //TODO: テストする。こいつを
     fun processYamlAndMapMessageKeys(
         data: Map<String, Any>,
         // default fallback
@@ -261,6 +260,19 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
      */
     fun getSysMessage(key: MessageKey<*, *>, vararg args: Any): String {
         val lang = Locale.getDefault().language
+        val message = messages[lang]?.get(key)
+        val text = message?.let { String.format(it, *args) } ?: return key.rc()
+        return text
+    }
+
+    /**
+     * Get a system message from the language manager.
+     * The language will be determined by the system's default locale.
+     *
+     * @param key The message key to retrieve.
+     * @param args The arguments to format the message with.
+     */
+    fun getSysMessageByLangCode(key: MessageKey<*, *>, lang: String, vararg args: Any): String {
         val message = messages[lang]?.get(key)
         val text = message?.let { String.format(it, *args) } ?: return key.rc()
         return text

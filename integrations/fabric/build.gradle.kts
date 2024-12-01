@@ -6,7 +6,7 @@ plugins {
     id ("fabric-loom")
 }
 
-version = "2.0.0"
+version = "2.0.1"
 
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")
@@ -32,7 +32,7 @@ publishing {
 
             pom {
                 name.set("SwiftBase Fabric")
-                description.set("Base code by SwiftStormStudio for FabricMod.")
+                description.set("Base code by SwiftStormStudio for Fabric Mod.")
                 url.set("https://github.com/SwiftStorm-Studio/SwiftBase")
                 licenses {
                     license {
@@ -58,13 +58,13 @@ publishing {
 }
 
 tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
-    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForFabricPublication")
+    dependsOn("clean", "remapJar", "sourcesJar", "javadocJar", "generatePomFileForFabricPublication")
 
     username = localProperties.getProperty("cu")
     password = localProperties.getProperty("cp")
 
     archives = files(
-        tasks.named("jar"),
+        tasks.named("remapJar"),
         tasks.named("sourcesJar"),
         tasks.named("javadocJar"),
     )

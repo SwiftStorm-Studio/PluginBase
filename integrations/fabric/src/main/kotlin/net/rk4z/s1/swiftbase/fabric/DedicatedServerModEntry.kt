@@ -91,7 +91,21 @@ open class DedicatedServerModEntry(
         throw NotImplementedError("This method is not implemented for Fabric Mod yet")
     }
 
+    /**
+     * This method is called after the instance is initialized.
+     * Usually, this method is used for initializing some variables.
+     */
     open fun onInstanceInitialized() {}
+
+    /**
+     * This method is called after the directories and files are initialized.
+     * Usually, this method is used for loading configurations.
+     */
     open fun onDirectoriesAndFilesInitialized() {}
+
+    /**
+     * This method is called after the initialization is done.
+     * Usually, this method is used for registering events, commands, and so on
+     */
     open fun onInitialized() {}
 }

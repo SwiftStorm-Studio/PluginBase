@@ -25,7 +25,7 @@ publishing {
 
             pom {
                 name.set("SwiftBase Paper")
-                description.set("The Paper base of SwiftBase plugin")
+                description.set("Base code by SwiftStormStudio for Paper Plugink.")
                 url.set("https://github.com/SwiftStorm-Studio/SwiftBase")
                 licenses {
                     license {
