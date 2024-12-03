@@ -6,7 +6,7 @@ val localProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }
 
-version = "2.0.8"
+version = "2.1.0"
 
 publishing {
     publications {

@@ -16,7 +16,6 @@ interface MessageKey<P : IPlayer<C>, C> {
             LogLevel.INFO -> Logger.info(message)
             LogLevel.WARN -> Logger.warn(message)
             LogLevel.ERROR -> Logger.error(message)
-            else -> Logger.debug(message)
         }
     }
 

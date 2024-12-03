@@ -20,7 +20,6 @@ val dummyCore = Core(
     version = "1.0.0"
 )
 
-
 fun String.toBooleanOrNull(): Boolean? {
     return when (this.trim().lowercase()) {
         "true", "1", "t" -> true

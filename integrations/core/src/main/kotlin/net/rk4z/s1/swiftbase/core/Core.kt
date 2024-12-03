@@ -101,7 +101,7 @@ class Core internal constructor(
             }
 
             if (LanguageManager.isInitialized()) {
-                throw IllegalStateException("LanguageManager already created by SBHelper.")
+                throw IllegalStateException("LanguageManager already created by itself.")
             }
 
             languageManagerInfo?.run {
