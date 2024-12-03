@@ -6,7 +6,7 @@ plugins {
     id ("fabric-loom")
 }
 
-version = "2.0.1"
+version = "2.0.2"
 
 dependencies {
     minecraft("com.mojang:minecraft:1.21.3")
@@ -57,14 +57,17 @@ publishing {
     }
 }
 
+tasks.named<Jar>("jar")  {
+    archiveClassifier.set("")
+}
 tasks.named<SonatypeCentralUploadTask>("sonatypeCentralUpload") {
-    dependsOn("clean", "remapJar", "sourcesJar", "javadocJar", "generatePomFileForFabricPublication")
+    dependsOn("clean", "jar", "sourcesJar", "javadocJar", "generatePomFileForFabricPublication")
 
     username = localProperties.getProperty("cu")
     password = localProperties.getProperty("cp")
 
     archives = files(
-        tasks.named("remapJar"),
+        tasks.named("jar"),
         tasks.named("sourcesJar"),
         tasks.named("javadocJar"),
     )

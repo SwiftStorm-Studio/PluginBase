@@ -132,7 +132,30 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
         val className = clazz.simpleName ?: return
         val fullPath = if (currentPath.isEmpty()) className.lowercase() else "$currentPath.${className.lowercase()}"
 
+        val normalizedKey = normalizeKey(fullPath)
+        val keysToRegister = generateKeyVariations(normalizedKey)
+
         Logger.logIfDebug("Mapping keys for class: ${clazz.simpleName}, fullPath: $fullPath")
+
+          // Old code
+//        val objectInstance = clazz.objectInstance
+//        if (objectInstance == null) {
+//            try {
+//                val newInstance = clazz.createInstance()
+//                if (castedExpectedMKType.isInstance(newInstance)) {
+//                    messageKeyMap[fullPath] = newInstance as MessageKey<P, C>
+//                    Logger.logIfDebug("Dynamically instantiated and added: $fullPath")
+//                } else {
+//                    Logger.logIfDebug("Skipping dynamically created instance: $fullPath is not of expected type", LogLevel.WARN)
+//                }
+//            } catch (e: Exception) {
+//                Logger.logIfDebug("Failed to instantiate class: ${clazz.simpleName}, reason: ${e.message}")
+//            }
+//        } else if (castedExpectedMKType.isInstance(objectInstance)) {
+//            messageKeyMap[fullPath] = objectInstance as MessageKey<P, C>
+//        } else {
+//            Logger.logIfDebug("Skipping ${clazz.simpleName}: not an instance of expected type", LogLevel.WARN)
+//        }
 
         // 1. 該当クラスのインスタンスを取得または動的生成
         val objectInstance = clazz.objectInstance
@@ -140,40 +163,72 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
             try {
                 val newInstance = clazz.createInstance()
                 if (castedExpectedMKType.isInstance(newInstance)) {
-                    messageKeyMap[fullPath] = newInstance as MessageKey<P, C>
-                    Logger.logIfDebug("Dynamically instantiated and added: $fullPath")
+                    keysToRegister.forEach { key ->
+                        if (!messageKeyMap.containsKey(key)) {
+                            messageKeyMap[key] = newInstance as MessageKey<P, C>
+                            Logger.logIfDebug("Dynamically instantiated and added: $key")
+                        }
+                    }
                 } else {
-                    Logger.logIfDebug("Skipping dynamically created instance: $fullPath is not of expected type", LogLevel.WARN)
+                    Logger.logIfDebug("Skipping dynamically created instance: $normalizedKey is not of expected type", LogLevel.WARN)
                 }
             } catch (e: Exception) {
                 Logger.logIfDebug("Failed to instantiate class: ${clazz.simpleName}, reason: ${e.message}")
             }
         } else if (castedExpectedMKType.isInstance(objectInstance)) {
-            messageKeyMap[fullPath] = objectInstance as MessageKey<P, C>
+            keysToRegister.forEach { key ->
+                if (!messageKeyMap.containsKey(key)) {
+                    messageKeyMap[key] = objectInstance as MessageKey<P, C>
+                    Logger.logIfDebug("Registered key: $key")
+                }
+            }
         } else {
             Logger.logIfDebug("Skipping ${clazz.simpleName}: not an instance of expected type", LogLevel.WARN)
         }
 
+        // Old code
+//        if (!messageKeyMap.containsKey(fullPath)) {
+//            Logger.logIfDebug("Registering intermediate path: $fullPath")
+//            if (clazz.isSubclassOf(castedExpectedMKType)) {
+//                try {
+//                    val intermediateInstance = clazz.createInstance()
+//                    if (castedExpectedMKType.isInstance(intermediateInstance)) {
+//                        messageKeyMap[fullPath] = intermediateInstance as MessageKey<P, C>
+//                        Logger.logIfDebug("Intermediate instance added: $fullPath")
+//                    } else {
+//                        Logger.logIfDebug("Intermediate instance is not of expected type: $fullPath", LogLevel.WARN)
+//                    }
+//                } catch (e: Exception) {
+//                    Logger.logIfDebug("Intermediate path registration failed for: $fullPath, reason: ${e.message}")
+//                }
+//            } else {
+//                Logger.logIfDebug("Class $fullPath is not a subclass of expected type ${castedExpectedMKType.simpleName}, skipping registration")
+//            }
+//        }
+
         // 2. 中間パスも登録 (キーとしてアクセスできるようにする)
-        if (!messageKeyMap.containsKey(fullPath)) {
-            Logger.logIfDebug("Registering intermediate path: $fullPath")
+        if (!messageKeyMap.containsKey(normalizedKey)) {
+            Logger.logIfDebug("Registering intermediate path: $normalizedKey")
             if (clazz.isSubclassOf(castedExpectedMKType)) {
                 try {
                     val intermediateInstance = clazz.createInstance()
                     if (castedExpectedMKType.isInstance(intermediateInstance)) {
-                        messageKeyMap[fullPath] = intermediateInstance as MessageKey<P, C>
-                        Logger.logIfDebug("Intermediate instance added: $fullPath")
+                        keysToRegister.forEach { key ->
+                            if (!messageKeyMap.containsKey(key)) {
+                                messageKeyMap[key] = intermediateInstance as MessageKey<P, C>
+                                Logger.logIfDebug("Intermediate instance added: $key")
+                            }
+                        }
                     } else {
-                        Logger.logIfDebug("Intermediate instance is not of expected type: $fullPath", LogLevel.WARN)
+                        Logger.logIfDebug("Intermediate instance is not of expected type: $normalizedKey", LogLevel.WARN)
                     }
                 } catch (e: Exception) {
-                    Logger.logIfDebug("Intermediate path registration failed for: $fullPath, reason: ${e.message}")
+                    Logger.logIfDebug("Intermediate path registration failed for: $normalizedKey, reason: ${e.message}")
                 }
             } else {
-                Logger.logIfDebug("Class $fullPath is not a subclass of expected type ${castedExpectedMKType.simpleName}, skipping registration")
+                Logger.logIfDebug("Class $normalizedKey is not a subclass of expected type ${castedExpectedMKType.simpleName}, skipping registration")
             }
         }
-
 
         // 3. 再帰的にネストされたクラスを探索
         clazz.nestedClasses.forEach { nestedClass ->
@@ -277,4 +332,17 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
         val text = message?.let { String.format(it, *args) } ?: return key.rc()
         return text
     }
+
+    private fun normalizeKey(key: String): String {
+        return key.lowercase().replace("_", "")
+    }
+
+    private fun generateKeyVariations(normalizedKey: String): List<String> {
+        return listOf(
+            normalizedKey,
+            normalizedKey.lowercase(),
+            normalizedKey.uppercase()
+        ).distinct()
+    }
+
 }
