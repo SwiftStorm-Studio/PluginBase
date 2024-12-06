@@ -16,6 +16,17 @@ dependencies {
     compileOnly(project(":integrations:swiftbase-core"))
 }
 
+tasks.create<Jar>("jout") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(sourceSets.main.get().output)
+}
+
+tasks.named<ProcessResources>("processResources") {
+    filesMatching("fabric.mod.json") {
+        expand("version" to project.version)
+    }
+}
+
 val localProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }

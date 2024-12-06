@@ -62,3 +62,7 @@ subprojects {
         isFailOnError = false
     }
 }
+
+tasks.create<Jar>("buildAll") {
+    dependsOn(":integrations:core:jout", ":integrations:fabric:jout", ":integrations:paper:jout")
+}

@@ -4,6 +4,8 @@ import net.rk4z.s1.swiftbase.core.dummy.DummyExecutor
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
+import kotlin.reflect.KClass
+import kotlin.reflect.full.createInstance
 
 val dummyCore = Core(
     packageName = "com.example.dummy",
@@ -27,6 +29,16 @@ fun String.toBooleanOrNull(): Boolean? {
         else -> null
     }
 }
+
+fun <T : Any> KClass<T>.createInstanceOrNull(): T? {
+    return try {
+        this.createInstance()
+    } catch (e: Exception) {
+        Logger.logIfDebug("Failed to create instance for class: ${this.simpleName}, reason: ${e.message}")
+        null
+    }
+}
+
 
 fun String.isBlankOrEmpty(): Boolean {
     return this.isBlank() || this.isEmpty()

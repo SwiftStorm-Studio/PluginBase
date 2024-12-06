@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "swiftbase_fabric",
+  "version": "${version}",
+  "name": "SwiftBaseFabric",
+  "description": "The base of fabric client/server mod.",
+  "contributors": [
+    "Lars"
+  ],
+  "license": "S1-CU-License-1.0",
+  "environment": "*",
+  "entrypoints": {},
+  "depends": {
+    "swiftbase_core": "*"
+  }
+}

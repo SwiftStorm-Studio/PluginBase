@@ -276,17 +276,19 @@ class Core internal constructor(
      * Checks for updates using the Modrinth API.
      */
     fun checkUpdate() {
-        onCheckUpdate()
-        if (modrinthID.isBlank()) return
-        try {
-            val connection = createConnection()
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                handleUpdateResponse(connection)
-            } else {
-                onUpdateCheckFailed(connection.responseCode)
+        executor.executeAsync {
+            onCheckUpdate()
+            if (modrinthID.isBlank()) return@executeAsync
+            try {
+                val connection = createConnection()
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    handleUpdateResponse(connection)
+                } else {
+                    onUpdateCheckFailed(connection.responseCode)
+                }
+            } catch (e: Exception) {
+                onUpdateCheckError(e)
             }
-        } catch (e: Exception) {
-            onUpdateCheckError(e)
         }
     }
 

@@ -1,4 +1,5 @@
 import cl.franciscosolis.sonatypecentralupload.SonatypeCentralUploadTask
+import org.gradle.internal.declarativedsl.parsing.main
 import java.io.FileInputStream
 import java.util.*
 
@@ -6,7 +7,20 @@ val localProperties = Properties().apply {
     load(FileInputStream(rootProject.file("local.properties")))
 }
 
-version = "2.1.0"
+version = "2.1.1"
+
+tasks.named<Jar>("jar") {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(configurations.runtimeClasspath.get().filterNot {
+        it.name.contains("kotlin", ignoreCase = true)
+    }.map { zipTree(it) })
+}
+
+tasks.named<ProcessResources>("processResources") {
+    filesMatching("fabric.mod.json") {
+        expand("version" to project.version)
+    }
+}
 
 publishing {
     publications {

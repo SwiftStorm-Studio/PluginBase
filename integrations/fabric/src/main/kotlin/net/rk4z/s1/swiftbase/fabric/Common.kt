@@ -52,13 +52,13 @@ object Common {
 
         onDirectoriesAndFilesInitialized()
 
-        if (enableUpdateChecker) {
-            CB.checkUpdate()
-        }
-
         Runtime.getRuntime().addShutdownHook(Thread {
             CB.executor.shutdown()
         })
+
+        if (enableUpdateChecker) {
+            CB.checkUpdate()
+        }
 
         onInitialized()
     }

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "swiftbase_core",
+  "version": "${version}",
+  "name": "SwiftBaseCore",
+  "description": "The base of SwiftBase series.",
+  "contributors": [
+    "Lars"
+  ],
+  "license": "S1-CU-License-1.0",
+  "environment": "*",
+  "entrypoints": {}
+}

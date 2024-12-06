@@ -59,25 +59,35 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
 
     val messages: MutableMap<String, MutableMap<MessageKey<P, C>, String>> = mutableMapOf()
 
-    fun findMissingKeys(lang: String): List<String> {
+    fun findMissingKeys(lang: String) {
+        Logger.logIfDebug("Starting findMissingKeysForLanguage for language: $lang")
+
         val messageKeyMap: MutableMap<String, MessageKey<P, C>> = mutableMapOf()
         scanForMessageKeys(messageKeyMap)
-        val currentMessages = messages[lang] ?: return emptyList()
-        val missingKeys = mutableListOf<String>()
 
-        messageKeyMap.forEach { (path, key) ->
-            if (!currentMessages.containsKey(key)) {
-                missingKeys.add(path)
-                Logger.warn("Missing key: $path for language: $lang")
-            }
+        val yamlData = messages[lang]
+        if (yamlData == null) {
+            Logger.logIfDebug("No YAML data found for language: $lang")
+            return
         }
 
-        return missingKeys
+        val yamlKeys: MutableSet<String> = mutableSetOf()
+        collectYamlKeysFromMessages(yamlData, yamlKeys)
+
+        Logger.logIfDebug("Keys in messageKeyMap: ${messageKeyMap.keys.joinToString(", ")}")
+        Logger.logIfDebug("Keys in YAML for language '$lang': ${yamlKeys.joinToString(", ")}")
+
+        val missingKeys = messageKeyMap.keys.filter { it !in yamlKeys }
+
+        if (missingKeys.isNotEmpty()) {
+            Logger.logIfDebug("Missing keys for language '$lang': ${missingKeys.joinToString(", ")}")
+        } else {
+            Logger.logIfDebug("No missing keys found for language '$lang'. All class keys are present in YAML.")
+        }
     }
 
     fun processYamlAndMapMessageKeys(
         data: Map<String, Any>,
-        // default fallback
         lang: String = "en"
     ) {
         Logger.logIfDebug("Starting to process YAML and map message keys for language: $lang")
@@ -130,107 +140,20 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
         val castedExpectedMKType = expectedMKType as KClass<out MessageKey<P, C>>
 
         val className = clazz.simpleName ?: return
-        val fullPath = if (currentPath.isEmpty()) className.lowercase() else "$currentPath.${className.lowercase()}"
+        val fullPath = if (currentPath.isEmpty()) className else "$currentPath.$className"
 
         val normalizedKey = normalizeKey(fullPath)
-        val keysToRegister = generateKeyVariations(normalizedKey)
 
-        Logger.logIfDebug("Mapping keys for class: ${clazz.simpleName}, fullPath: $fullPath")
+        Logger.logIfDebug("Mapping key for class: $className, normalized: $normalizedKey")
 
-          // Old code
-//        val objectInstance = clazz.objectInstance
-//        if (objectInstance == null) {
-//            try {
-//                val newInstance = clazz.createInstance()
-//                if (castedExpectedMKType.isInstance(newInstance)) {
-//                    messageKeyMap[fullPath] = newInstance as MessageKey<P, C>
-//                    Logger.logIfDebug("Dynamically instantiated and added: $fullPath")
-//                } else {
-//                    Logger.logIfDebug("Skipping dynamically created instance: $fullPath is not of expected type", LogLevel.WARN)
-//                }
-//            } catch (e: Exception) {
-//                Logger.logIfDebug("Failed to instantiate class: ${clazz.simpleName}, reason: ${e.message}")
-//            }
-//        } else if (castedExpectedMKType.isInstance(objectInstance)) {
-//            messageKeyMap[fullPath] = objectInstance as MessageKey<P, C>
-//        } else {
-//            Logger.logIfDebug("Skipping ${clazz.simpleName}: not an instance of expected type", LogLevel.WARN)
-//        }
-
-        // 1. 該当クラスのインスタンスを取得または動的生成
-        val objectInstance = clazz.objectInstance
-        if (objectInstance == null) {
-            try {
-                val newInstance = clazz.createInstance()
-                if (castedExpectedMKType.isInstance(newInstance)) {
-                    keysToRegister.forEach { key ->
-                        if (!messageKeyMap.containsKey(key)) {
-                            messageKeyMap[key] = newInstance as MessageKey<P, C>
-                            Logger.logIfDebug("Dynamically instantiated and added: $key")
-                        }
-                    }
-                } else {
-                    Logger.logIfDebug("Skipping dynamically created instance: $normalizedKey is not of expected type", LogLevel.WARN)
-                }
-            } catch (e: Exception) {
-                Logger.logIfDebug("Failed to instantiate class: ${clazz.simpleName}, reason: ${e.message}")
-            }
-        } else if (castedExpectedMKType.isInstance(objectInstance)) {
-            keysToRegister.forEach { key ->
-                if (!messageKeyMap.containsKey(key)) {
-                    messageKeyMap[key] = objectInstance as MessageKey<P, C>
-                    Logger.logIfDebug("Registered key: $key")
-                }
-            }
-        } else {
-            Logger.logIfDebug("Skipping ${clazz.simpleName}: not an instance of expected type", LogLevel.WARN)
-        }
-
-        // Old code
-//        if (!messageKeyMap.containsKey(fullPath)) {
-//            Logger.logIfDebug("Registering intermediate path: $fullPath")
-//            if (clazz.isSubclassOf(castedExpectedMKType)) {
-//                try {
-//                    val intermediateInstance = clazz.createInstance()
-//                    if (castedExpectedMKType.isInstance(intermediateInstance)) {
-//                        messageKeyMap[fullPath] = intermediateInstance as MessageKey<P, C>
-//                        Logger.logIfDebug("Intermediate instance added: $fullPath")
-//                    } else {
-//                        Logger.logIfDebug("Intermediate instance is not of expected type: $fullPath", LogLevel.WARN)
-//                    }
-//                } catch (e: Exception) {
-//                    Logger.logIfDebug("Intermediate path registration failed for: $fullPath, reason: ${e.message}")
-//                }
-//            } else {
-//                Logger.logIfDebug("Class $fullPath is not a subclass of expected type ${castedExpectedMKType.simpleName}, skipping registration")
-//            }
-//        }
-
-        // 2. 中間パスも登録 (キーとしてアクセスできるようにする)
-        if (!messageKeyMap.containsKey(normalizedKey)) {
-            Logger.logIfDebug("Registering intermediate path: $normalizedKey")
-            if (clazz.isSubclassOf(castedExpectedMKType)) {
-                try {
-                    val intermediateInstance = clazz.createInstance()
-                    if (castedExpectedMKType.isInstance(intermediateInstance)) {
-                        keysToRegister.forEach { key ->
-                            if (!messageKeyMap.containsKey(key)) {
-                                messageKeyMap[key] = intermediateInstance as MessageKey<P, C>
-                                Logger.logIfDebug("Intermediate instance added: $key")
-                            }
-                        }
-                    } else {
-                        Logger.logIfDebug("Intermediate instance is not of expected type: $normalizedKey", LogLevel.WARN)
-                    }
-                } catch (e: Exception) {
-                    Logger.logIfDebug("Intermediate path registration failed for: $normalizedKey, reason: ${e.message}")
-                }
-            } else {
-                Logger.logIfDebug("Class $normalizedKey is not a subclass of expected type ${castedExpectedMKType.simpleName}, skipping registration")
+        val objectInstance = clazz.objectInstance ?: clazz.createInstanceOrNull()
+        if (objectInstance != null && castedExpectedMKType.isInstance(objectInstance)) {
+            if (!messageKeyMap.containsKey(normalizedKey)) {
+                messageKeyMap[normalizedKey] = objectInstance as MessageKey<P, C>
+                Logger.logIfDebug("Registered key: $normalizedKey")
             }
         }
 
-        // 3. 再帰的にネストされたクラスを探索
         clazz.nestedClasses.forEach { nestedClass ->
             if (nestedClass.isSubclassOf(castedExpectedMKType)) {
                 mapMessageKeys(nestedClass as KClass<out MessageKey<P, C>>, fullPath, messageKeyMap)
@@ -249,7 +172,9 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
 
         for ((key, value) in data) {
             val currentPrefix = if (prefix.isEmpty()) key else "$prefix.$key"
-            Logger.logIfDebug("Processing key: $key, currentPrefix: $currentPrefix")
+            val normalizedPrefix = normalizeKey(currentPrefix) // 正規化されたキー
+            Logger.logIfDebug("Processing key: $key, currentPrefix: $currentPrefix, normalized: $normalizedPrefix")
+
             if (key == "langVersion") {
                 Logger.logIfDebug("Skipping langVersion key")
                 continue
@@ -257,53 +182,64 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
 
             when (value) {
                 is String -> {
-                    val messageKey = messageKeyMap[currentPrefix]
+                    val messageKey = messageKeyMap[normalizedPrefix]
                     if (messageKey != null) {
-                        Logger.logIfDebug("Mapping message: $currentPrefix -> $value")
+                        Logger.logIfDebug("Mapping message: $normalizedPrefix -> $value")
                         messageMap[messageKey] = value
                     } else {
-                        Logger.logIfDebug("No message key found for YAML path: $currentPrefix", LogLevel.WARN)
+                        Logger.logIfDebug("No message key found for YAML path: $normalizedPrefix", LogLevel.WARN)
                     }
                 }
-                is List<*> -> {
-                    Logger.logIfDebug("Processing list at path: $currentPrefix with ${value.size} items")
 
-                    // リストの要素を順に処理
+                is List<*> -> {
+                    Logger.logIfDebug("Processing list at path: $normalizedPrefix with ${value.size} items")
                     value.forEachIndexed { index, element ->
                         val listPrefix = "$currentPrefix.item_$index"
+                        val normalizedListPrefix = normalizeKey(listPrefix)
 
                         when (element) {
                             is String -> {
-                                // ITEM_0, ITEM_1... と対応する MessageKey を取得
-                                val messageKey = messageKeyMap[listPrefix]
+                                val messageKey = messageKeyMap[normalizedListPrefix]
                                 if (messageKey != null) {
-                                    Logger.logIfDebug("Mapping list item: $listPrefix -> $element")
+                                    Logger.logIfDebug("Mapping list item: $normalizedListPrefix -> $element")
                                     messageMap[messageKey] = element
                                 } else {
-                                    Logger.logIfDebug("No message key found for list item path: $listPrefix", LogLevel.WARN)
+                                    Logger.logIfDebug("No message key found for list item path: $normalizedListPrefix", LogLevel.WARN)
                                 }
                             }
                             is Map<*, *> -> {
-                                Logger.logIfDebug("Encountered nested map in list at path: $listPrefix; diving deeper")
+                                Logger.logIfDebug("Encountered nested map in list at path: $normalizedListPrefix; diving deeper")
                                 processYamlData(listPrefix, element as Map<String, Any>, messageKeyMap, messageMap)
                             }
                             else -> {
-                                Logger.logIfDebug("Unexpected value type in list at path $listPrefix: ${element?.let { it::class.simpleName } ?: "null"}")
+                                Logger.logIfDebug("Unexpected value type in list at path $normalizedListPrefix: ${element?.let { it::class.simpleName } ?: "null"}")
                             }
                         }
                     }
                 }
+
                 is Map<*, *> -> {
-                    Logger.logIfDebug("Encountered nested structure at path: $currentPrefix; diving deeper")
+                    Logger.logIfDebug("Encountered nested structure at path: $normalizedPrefix; diving deeper")
                     processYamlData(currentPrefix, value as Map<String, Any>, messageKeyMap, messageMap)
                 }
+
                 else -> {
-                    Logger.logIfDebug("Unexpected value type at path $currentPrefix: ${value::class.simpleName}")
+                    Logger.logIfDebug("Unexpected value type at path $normalizedPrefix: ${value::class.simpleName}")
                 }
             }
         }
 
         Logger.logIfDebug("Completed YAML data processing for prefix: '$prefix'")
+    }
+
+    private fun collectYamlKeysFromMessages(
+        messages: Map<MessageKey<P, C>, String>,
+        yamlKeys: MutableSet<String>
+    ) {
+        for (messageKey in messages.keys) {
+            val normalizedKey = normalizeKey(messageKey.rc())
+            yamlKeys.add(normalizedKey)
+        }
     }
 
     /**
@@ -337,12 +273,16 @@ open class LanguageManager<P : IPlayer<C>, C> private constructor(
         return key.lowercase().replace("_", "")
     }
 
-    private fun generateKeyVariations(normalizedKey: String): List<String> {
+    private fun generateKeyVariations(key: String): List<String> {
+        val normalizedKey = normalizeKey(key)
         return listOf(
+            key,
             normalizedKey,
-            normalizedKey.lowercase(),
             normalizedKey.uppercase()
         ).distinct()
     }
 
+    private fun toSnakeCase(key: String): String {
+        return key.replace(Regex("([a-z])([A-Z]+)"), "$1_$2").lowercase()
+    }
 }
