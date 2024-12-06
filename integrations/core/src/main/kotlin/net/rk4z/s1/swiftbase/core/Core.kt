@@ -280,7 +280,7 @@ class Core internal constructor(
             onCheckUpdate()
             if (modrinthID.isBlank()) return@executeAsync
             try {
-                val connection = createConnection()
+                val connection = URI(MODRINTH_API_URL).toURL().openConnection() as HttpURLConnection
                 if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                     handleUpdateResponse(connection)
                 } else {
@@ -341,10 +341,6 @@ class Core internal constructor(
             val langData: Map<String, Any> = yaml.load(reader)
             langData["langVersion"]?.toString() ?: "0"
         }
-    }
-
-    private fun createConnection(): HttpURLConnection {
-        return URI(MODRINTH_API_URL).toURL().openConnection() as HttpURLConnection
     }
 
     private fun handleUpdateResponse(connection: HttpURLConnection) {

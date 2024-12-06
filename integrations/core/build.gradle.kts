@@ -1,5 +1,4 @@
 import cl.franciscosolis.sonatypecentralupload.SonatypeCentralUploadTask
-import org.gradle.internal.declarativedsl.parsing.main
 import java.io.FileInputStream
 import java.util.*
 
