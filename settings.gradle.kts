@@ -16,9 +16,6 @@ rootProject.name = "swiftbase"
 
 include(":integrations")
 
-include(":integrations:launcher")
-project(":integrations:launcher").name = "swiftbase-launcher"
-
 include(":integrations:core")
 project(":integrations:core").name = "swiftbase-core"
 
